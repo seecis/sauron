@@ -1,0 +1,15 @@
+name: "html-extractor-1"
+queries:
+  - selector : "nav.mt-3"
+    name : "menu"
+    forEachChildren: false
+    subQueries:
+      - selector: "ul > li:nth-child(1) > a:nth-child(1)"
+        name: "features"
+        forEachChildren: "false"
+        trim: true
+      - selector: "ul > li:nth-child(2) > a:nth-child(1)"
+        name: "business"
+        forEachChildren: "false"
+        trim: true
+

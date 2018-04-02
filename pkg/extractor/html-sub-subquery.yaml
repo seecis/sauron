@@ -1,0 +1,24 @@
+name: "subsubquerytest"
+queries:
+  - selector : "body > table:nth-child(1) > tbody:nth-child(1)"
+    name : "table"
+    forEachChildren: true
+    trim : true
+    subQueries:
+      - selector: "td:nth-child(1)"
+        forEachChildren: false
+        name: "1"
+        trim: true
+      - selector: "td:nth-child(2)"
+        forEachChildren: false
+        name: "2"
+        trim: true
+      - selector: "td:nth-child(3)"
+        forEachChildren: false
+        name: "3"
+        trim: true
+      - selector: "td:nth-child(4)"
+        forEachChildren: false
+        name: "4"
+        trim: true
+
