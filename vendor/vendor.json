@@ -1,0 +1,43 @@
+{
+	"comment": "",
+	"ignore": "test",
+	"package": [
+		{
+			"checksumSHA1": "69q4K85KCjqPDg4HznrUb4j3Kds=",
+			"path": "github.com/PuerkitoBio/goquery",
+			"revision": "bc4e06eb0792d1a14661d19dd7822163c25bb6bd",
+			"revisionTime": "2017-12-06T12:16:06Z"
+		},
+		{
+			"checksumSHA1": "Bgs5fKx4V8jxL/m/krOLmhS4az4=",
+			"path": "github.com/andybalholm/cascadia",
+			"revision": "349dd0209470eabd9514242c688c403c0926d266",
+			"revisionTime": "2016-12-24T14:14:13Z"
+		},
+		{
+			"checksumSHA1": "GcIrB1ug6mS8aG73v1KtlHfva9Q=",
+			"path": "github.com/davecgh/go-spew/spew",
+			"revision": "ecdeabc65495df2dec95d7c4a4c3e021903035e5",
+			"revisionTime": "2017-10-02T20:02:53Z"
+		},
+		{
+			"checksumSHA1": "ag6CP2CjfMRiJxDuBDVKytu5sR8=",
+			"path": "golang.org/x/net/html",
+			"revision": "0ed95abb35c445290478a5348a7b38bb154135fd",
+			"revisionTime": "2018-01-24T06:08:02Z"
+		},
+		{
+			"checksumSHA1": "iWvOOLdDxvI4AVX6px6/HYBPeaQ=",
+			"path": "golang.org/x/net/html/atom",
+			"revision": "0ed95abb35c445290478a5348a7b38bb154135fd",
+			"revisionTime": "2018-01-24T06:08:02Z"
+		},
+		{
+			"checksumSHA1": "d3jYBfW+YmOxsa5o8m6XyywVbIo=",
+			"path": "gopkg.in/yaml.v2",
+			"revision": "5420a8b6744d3b0345ab293f6fcba19c978f1183",
+			"revisionTime": "2018-03-28T19:50:20Z"
+		}
+	],
+	"rootPath": "bitbucket.org/seecis/sauron"
+}
