@@ -3,9 +3,9 @@ package extractor
 import "bufio"
 
 type Field struct {
-	label     string
-	data      string
-	subfields []Field
+	Label     string  `json:"label" yaml:"label"`
+	Data      string  `json:"data" yaml:"data"`
+	Subfields []Field `json:"subfields" yaml:"subfields"`
 }
 
 type Extractor interface {

@@ -7,6 +7,7 @@ import (
 	"github.com/PuerkitoBio/goquery"
 	"strings"
 	"log"
+	"fmt"
 )
 
 type Query struct {
@@ -39,7 +40,7 @@ func (he *HtmlExtractor) Extract(reader *bufio.Reader) (*Field, error) {
 
 	rootQuery := Query{
 		Selector:        "",
-		Name:            "",
+		Name:            he.Name,
 		ForEachChildren: false,
 		SubQueries:      he.Queries,
 		Trim:            false,
@@ -50,7 +51,7 @@ func (he *HtmlExtractor) Extract(reader *bufio.Reader) (*Field, error) {
 		return nil, err
 	}
 
-	return &f, nil
+	return f, nil
 }
 
 type SelectionWrapper struct {
@@ -66,6 +67,7 @@ type Queryable interface {
 	Text() string
 	EachQ(f func(int, Queryable)) Queryable
 	ChildrenQ() Queryable
+	DirectChildCount() int
 }
 
 func wrapSelection(selection *goquery.Selection) Queryable {
@@ -74,6 +76,14 @@ func wrapSelection(selection *goquery.Selection) Queryable {
 
 func wrapDocument(document *goquery.Document) Queryable {
 	return &DocumentWrapper{document}
+}
+
+func (sw *SelectionWrapper) DirectChildCount() int {
+	return len(sw.Nodes)
+}
+
+func (dw *DocumentWrapper) DirectChildCount() int {
+	return len(dw.Nodes)
 }
 
 func (sw *SelectionWrapper) ChildrenQ() Queryable {
@@ -108,72 +118,74 @@ func (dw *DocumentWrapper) F(query string) Queryable {
 	return &SelectionWrapper{dw.Find(query)}
 }
 
-func executeQuery(document Queryable, query Query) (Field, error) {
+func executeSubqueries(document Queryable, queries []Query) ([]Field, error) {
+	var fields []Field
+	for _, v := range queries {
+		f, err := executeQuery(document, v)
+		if err != nil {
+			return nil, err
+		}
+
+		if f != nil {
+			fields = append(fields, *f)
+		}
+	}
+
+	return fields, nil
+}
+
+func executeQuery(document Queryable, query Query) (*Field, error) {
 	node := document.F(query.Selector)
 	if query.Selector == "" {
 		node = document
 	}
 
-	var f Field
-
 	if query.ForEachChildren {
-		f.label = query.Name
-
-		node.ChildrenQ().EachQ(func(i int, queryable Queryable) {
-			var s Field
-
-			if len(query.SubQueries) > 0 {
-				for _, v := range query.SubQueries {
-					subres, err := executeQuery(queryable, v)
-					if err != nil {
-						//todo: fix this
-						log.Fatal(err)
-					}
-
-					s.subfields = append(s.subfields, subres)
-				}
-
-				f.subfields = append(f.subfields, s)
-				return
+		var f Field
+		f.Label = query.Name
+		children := node.ChildrenQ()
+		children.EachQ(func(i int, queryable Queryable) {
+			subresults, err := executeSubqueries(queryable, query.SubQueries)
+			if err != nil {
+				log.Fatal(err)
 			}
 
-			dt := queryable.Text()
-			if query.Trim {
-				dt = strings.TrimSpace(dt)
+			fff := Field{
+				Label:     fmt.Sprintf("%d", i),
+				Data:      "",
+				Subfields: subresults,
 			}
 
-			res := Field{label: string(i),
-				data: dt,
-				subfields: nil,
-			}
-
-			f.subfields = append(f.subfields, res)
+			f.Subfields = append(f.Subfields, fff)
 		})
 
-		return f, nil
+		return &f, nil
 	}
 
 	if len(query.SubQueries) == 0 {
-		f.label = query.Name
+		var f Field
+		f.Label = query.Name
+		if node.DirectChildCount() == 0 {
+			return nil, nil
+		}
 		dt := node.Text()
 		if query.Trim {
 			dt = strings.TrimSpace(dt)
 		}
 
-		f.data = dt
-		return f, nil
+		f.Data = dt
+		return &f, nil
 	}
 
-	for _, v := range query.SubQueries {
-		subresult, err := executeQuery(node, v)
-		if err != nil {
-			return Field{}, err
-		}
-
-		f.subfields = append(f.subfields, subresult)
+	subresults, err := executeSubqueries(node, query.SubQueries)
+	if err != nil {
+		return nil, err
 	}
 
-	return f, nil
+	var f Field
+	f.Subfields = append(f.Subfields, subresults...)
+	f.Label = query.Name
+	return &f, nil
 }
 
 func NewHtmlExtractor(reader io.Reader) Extractor {

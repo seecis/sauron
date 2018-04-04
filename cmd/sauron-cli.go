@@ -14,15 +14,15 @@ func main() {
 	var filePath string
 	var extractorName string
 	flag.StringVar(&extractorName,
-		"extractor",
+		"e",
 		"",
-		"Sets the extractor to run on the provided html filePath")
+		"-e extractor.yaml")
 
 	flag.StringVar(
 		&filePath,
 		"f",
 		"",
-		"Sets the filePath that extractor will be ran on")
+		"-f test.html")
 
 	flag.Parse()
 
