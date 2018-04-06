@@ -188,8 +188,8 @@ func executeQuery(document Queryable, query Query) (*Field, error) {
 	return &f, nil
 }
 
-func NewHtmlExtractor(reader io.Reader) Extractor {
+func NewHtmlExtractor(extractor io.Reader) Extractor {
 	var htmlExtractor HtmlExtractor
-	yaml.NewDecoder(reader).Decode(&htmlExtractor)
+	yaml.NewDecoder(extractor).Decode(&htmlExtractor)
 	return &htmlExtractor
 }

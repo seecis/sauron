@@ -15,11 +15,14 @@ exlinux=
 exwindows=.exe
 
 vendoring:
-	$(GOGET) -u github.com/kardianos/govendor
+	$(GOGET) github.com/kardianos/govendor
 	govendor sync
 
 $(PLATFORMS):
 	$(info Building for $(os))
-	GOOS=$(os) GOARCH=$(arch) go build -o 'dist/$(os)/$(arch)/sauron-cli$(ex$(os))' cmd/sauron-cli.go
+	GOOS=$(os) GOARCH=$(arch) go build -o 'dist/$(os)/$(arch)/sauron$(ex$(os))' sauron.go
 
+justbuildit: $(PLATFORMS)
 release: vendoring $(PLATFORMS)
+install:
+	$(GOCMD) install
