@@ -1,8 +1,13 @@
+// Copyright 2018 Legrin, LLC
+//
+// Use of this source code is governed by an MIT-style
+// license that can be found in the LICENSE file.
+
 package cmd
 
 import (
 	"github.com/spf13/cobra"
-	"bitbucket.org/seecis/sauron/pkg/extractor"
+	"github.com/seecis/sauron/pkg/extractor"
 	"os"
 	"log"
 	"bufio"

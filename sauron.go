@@ -1,6 +1,6 @@
 package main
 
-import "bitbucket.org/seecis/sauron/cmd"
+import "github.com/seecis/sauron/cmd"
 
 func main() {
 	cmd.Execute()

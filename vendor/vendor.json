@@ -165,13 +165,13 @@
 			"revisionTime": "2018-01-24T06:08:02Z"
 		},
 		{
-			"checksumSHA1": "iWvOOLdDxvI4AVX6px6/HYBPeaQ=",
+			"checksumSHA1": "uMRr2bnIJS+9Xm0FqMBYUTzaSGs=",
 			"path": "golang.org/x/net/html/atom",
 			"revision": "0ed95abb35c445290478a5348a7b38bb154135fd",
 			"revisionTime": "2018-01-24T06:08:02Z"
 		},
 		{
-			"checksumSHA1": "rViW/iebE6UbpQYmSkw1r9bmd6E=",
+			"checksumSHA1": "Mwu8T+68sKdnkn0AWla8trKDOfI=",
 			"path": "golang.org/x/sys/unix",
 			"revision": "1d206c9fa8975fb4cf00df1dc8bf3283dc24ba0e",
 			"revisionTime": "2018-04-04T17:59:11Z"
@@ -183,7 +183,7 @@
 			"revisionTime": "2017-12-24T20:31:28Z"
 		},
 		{
-			"checksumSHA1": "lN2xlA6Utu7tXy2iUoMF2+y9EUE=",
+			"checksumSHA1": "BCNYmf4Ek93G4lk5x3ucNi/lTwA=",
 			"path": "golang.org/x/text/unicode/norm",
 			"revision": "e19ae1496984b1c655b8044a65c0300a3c878dd3",
 			"revisionTime": "2017-12-24T20:31:28Z"
@@ -195,5 +195,5 @@
 			"revisionTime": "2018-03-28T19:50:20Z"
 		}
 	],
-	"rootPath": "bitbucket.org/seecis/sauron"
+	"rootPath": "github.com/seecis/sauron"
 }
