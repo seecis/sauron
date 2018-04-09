@@ -11,21 +11,34 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// webCmd represents the web command
-var webCmd = &cobra.Command{
-	Use:   "web",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
+var serverAddress string
 
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+var frontendPort string
+var frontendIp string
+
+// frontendCmd represents the web command
+var frontendCmd = &cobra.Command{
+	Use:   "frontend",
+	Short: "Starts a html frontend server for sauron",
+	Long:  `This command needs a working sauron backend to work.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("web called")
 	},
 }
 
 func init() {
-	serveCmd.AddCommand(webCmd)
+	serveCmd.AddCommand(frontendCmd)
+
+	frontendCmd.Flags().StringVarP(&serverAddress,
+		"serverAddress",
+		"",
+		"sauron-backend:9091",
+		"Provide address for sauron frontend to connect to sauron backend")
+
+	frontendCmd.Flags().StringVarP(&frontendPort, "port", "p", "9090", "Port to bind for frontend")
+	frontendCmd.Flags().StringVarP(&frontendIp, "ip", "i", "127.0.0.1", "Ip will listen to this ip")
+
+	frontendCmd.MarkFlagRequired("port")
+	frontendCmd.MarkFlagRequired("ip")
+
 }

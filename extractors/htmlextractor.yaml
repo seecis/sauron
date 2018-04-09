@@ -6,10 +6,9 @@ queries:
     subQueries:
       - selector: "ul > li:nth-child(1) > a:nth-child(1)"
         name: "features"
-        forEachChildren: "false"
+        forEachChildren: false
         trim: true
       - selector: "ul > li:nth-child(2) > a:nth-child(1)"
         name: "business"
-        forEachChildren: "false"
+        forEachChildren: false
         trim: true
-

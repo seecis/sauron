@@ -18,7 +18,7 @@ var cfgFile string
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
-	Use:   "sauron-cli",
+	Use:   "sauron",
 	Short: "Multi purpose ever seeing eye",
 	Long: `Sauron is a web parser, data extractor. Can see thing in html files for now. Uses extractors and provides
 an ui for creating extractors.`,

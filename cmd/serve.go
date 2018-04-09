@@ -25,7 +25,4 @@ var serveCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(serveCmd)
-
-	serveCmd.PersistentFlags().StringVar(&webPort, "port", "8080", "Provide port for server")
-	serveCmd.PersistentFlags().StringVar(&bindIp, "bind", "0.0.0.0", "IP to bind")
 }

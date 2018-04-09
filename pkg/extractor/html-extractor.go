@@ -16,16 +16,16 @@ import (
 )
 
 type Query struct {
-	Selector        string  `yaml:"selector"`
-	Name            string  `yaml:"name"`
-	ForEachChildren bool    `yaml:"forEachChildren"`
-	SubQueries      []Query `yaml:"subQueries"`
-	Trim            bool    `yaml:"trim,omitempty"`
+	Selector        string  `json:"selector" yaml:"selector"`
+	Name            string  `json:"name" yaml:"name"`
+	ForEachChildren bool    `json:"forEachChildren" yaml:"forEachChildren"`
+	SubQueries      []Query `json:"subQueries" yaml:"subQueries"`
+	Trim            bool    `json:"trim,omitempty" yaml:"trim,omitempty"`
 }
 
 type HtmlExtractor struct {
-	Name    string  `yaml:"name"`
-	Queries []Query `yaml:"queries"`
+	Name    string  `json:"name" yaml:"name"`
+	Queries []Query `json:"queries" yaml:"queries"`
 }
 
 func openDocument(reader *bufio.Reader) (Queryable, error) {

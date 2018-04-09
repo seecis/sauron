@@ -19,7 +19,6 @@ var file string
 var extractorFile string
 var outputFormat string
 
-// extractCmd represents the extract command
 var extractCmd = &cobra.Command{
 	Use:   "extract",
 	Short: "Extracts data using given extractor from a file",
@@ -32,7 +31,6 @@ var extractCmd = &cobra.Command{
 		}
 
 		ff, err := os.Open(file)
-
 		ex := extractor.NewHtmlExtractor(bufio.NewReader(yamlFile))
 		fields, err := ex.Extract(bufio.NewReader(ff))
 
@@ -41,20 +39,20 @@ var extractCmd = &cobra.Command{
 			return
 		}
 
-		if outputFormat == "yaml" {
-			yaml.NewEncoder(os.Stdout).Encode(*fields)
-			return
+		switch outputFormat {
+		case "yaml":
+			err = yaml.NewEncoder(os.Stdout).Encode(*fields)
+		case "json":
+			err = json.NewEncoder(os.Stdout).Encode(*fields)
 		}
 
-		if outputFormat == "json"{
-			json.NewEncoder(os.Stdout).Encode(*fields)
+		if err != nil {
+			log.Fatal(err)
 		}
-
 	},
 }
 
 func init() {
-
 	rootCmd.AddCommand(extractCmd)
 	extractCmd.Flags().StringVarP(&file, "file", "f", "", "Provide file to be extracted")
 	extractCmd.Flags().StringVarP(&extractorFile, "extractor", "e", "", "Extractor to be used")

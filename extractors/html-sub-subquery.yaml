@@ -21,4 +21,3 @@ queries:
         forEachChildren: false
         name: "4"
         trim: true
-
