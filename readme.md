@@ -22,12 +22,12 @@ extraction processes.
 
 ## Setup
 To use `go get` for this project's dependencies you need to be able to
-use git on [bitbucket.org](https://bitbucket.org) repositories since
+use git on [github.com](https://github.com) repositories since
 currently this repository and one of his dependencies is hosted there.
 
 To remove annoying `git-credential-manager` popup and use your cute ssh
 client instead, use this command: `git config --global url.
-"git@bitbucket.org:".insteadOf "https://bitbucket.org/"`
+"git@github.com:".insteadOf "https://github.com/"`
 
 ## Running
 Don't know yet
