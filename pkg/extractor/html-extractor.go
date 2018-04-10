@@ -24,7 +24,7 @@ type Query struct {
 }
 
 type HtmlExtractor struct {
-	Name    string  `json:"name" yaml:"name"`
+	Name    string  `json:"name,omitempty" yaml:"name,omitempty"`
 	Queries []Query `json:"queries" yaml:"queries"`
 }
 
@@ -77,10 +77,6 @@ type Queryable interface {
 
 func wrapSelection(selection *goquery.Selection) Queryable {
 	return &SelectionWrapper{selection}
-}
-
-func wrapDocument(document *goquery.Document) Queryable {
-	return &DocumentWrapper{document}
 }
 
 func (sw *SelectionWrapper) DirectChildCount() int {
@@ -197,4 +193,8 @@ func NewHtmlExtractor(extractor io.Reader) Extractor {
 	var htmlExtractor HtmlExtractor
 	yaml.NewDecoder(extractor).Decode(&htmlExtractor)
 	return &htmlExtractor
+}
+
+func (he *HtmlExtractor) GetName() string {
+	return he.Name
 }

@@ -16,4 +16,5 @@ type Field struct {
 
 type Extractor interface {
 	Extract(reader *bufio.Reader) (*Field, error)
+	GetName() string
 }
