@@ -76,6 +76,10 @@ func StartServer(ip, port string) {
 }
 
 func checkFileExists(path string) bool {
+	//os.Stat check for file info. If Stat couldn't find a file returns an error. Since golang doesn't provide an error
+	//handling mechanism os library provides us with a nice IsNotExists function. IsNotExists(error) checks if returned
+	//error occurred because of an file not found error. Since we don't care about the file info we just ignore Stat's
+	//first return value.
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		return false
 	}
@@ -190,7 +194,7 @@ func serialize(w http.ResponseWriter, thing interface{}, mimeType mimeType) erro
 	return errors.New("Unknown mime type")
 }
 
-func deserialize(r io.Reader, thing *extractor.HtmlExtractor, mimeType mimeType) error {
+func deserialize(r io.Reader, htmlExtractor *extractor.HtmlExtractor, mimeType mimeType) error {
 	var unMarshaller Unmarshaller
 	switch mimeType {
 	case mime_json:
@@ -199,7 +203,7 @@ func deserialize(r io.Reader, thing *extractor.HtmlExtractor, mimeType mimeType)
 		unMarshaller = yaml.NewDecoder(r)
 	}
 
-	decode := unMarshaller.Decode(thing)
+	decode := unMarshaller.Decode(htmlExtractor)
 	return decode
 }
 
