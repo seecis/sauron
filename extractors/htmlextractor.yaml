@@ -1,4 +1,4 @@
-name: "html-extractor-1"
+name: "htmlextractor"
 queries:
   - selector : "nav.mt-3"
     name : "menu"

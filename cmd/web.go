@@ -35,8 +35,16 @@ func init() {
 		"sauron-backend:9091",
 		"Provide address for sauron frontend to connect to sauron backend")
 
-	frontendCmd.Flags().StringVarP(&frontendPort, "port", "p", "9090", "Port to bind for frontend")
-	frontendCmd.Flags().StringVarP(&frontendIp, "ip", "i", "127.0.0.1", "Ip will listen to this ip")
+	frontendCmd.Flags().StringVarP(&frontendPort, "port",
+		"p",
+		"9090",
+		"Port to bind for frontend")
+
+	frontendCmd.Flags().StringVarP(&frontendIp,
+		"ip",
+		"i",
+		"127.0.0.1",
+		"Ip will listen to this ip")
 
 	frontendCmd.MarkFlagRequired("port")
 	frontendCmd.MarkFlagRequired("ip")

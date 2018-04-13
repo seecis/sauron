@@ -33,19 +33,20 @@
 package http
 
 import (
-	"github.com/julienschmidt/httprouter"
-	"net/http"
-	"log"
-	"fmt"
-	"mime"
 	"encoding/json"
-	"gopkg.in/yaml.v2"
+	"fmt"
 	"github.com/seecis/sauron/internal/dataaccess"
 	"github.com/seecis/sauron/pkg/extractor"
-	"io"
+	"github.com/seecis/sauron/pkg/scheduler"
+	"github.com/julienschmidt/httprouter"
 	"github.com/pkg/errors"
 	"github.com/gorilla/handlers"
+	"gopkg.in/yaml.v2"
+	"io"
 	"os"
+	"log"
+	"mime"
+	"net/http"
 	"strconv"
 )
 
@@ -158,6 +159,7 @@ func getContentType(r *http.Request) mimeType {
 type ExtractorHandler struct {
 	service       dataaccess.ExtractorService
 	reportService dataaccess.ReportService
+	scheduler     scheduler.ExtractionScheduler
 }
 
 func (eh *ExtractorHandler) GetAll(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
@@ -306,7 +308,60 @@ func (eh *ExtractorHandler) UpdateExtractor(w http.ResponseWriter, r *http.Reque
 }
 
 func (eh *ExtractorHandler) Extract(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+	mm := getResponseType(r)
 
+	extractorId := params.ByName("id")
+	if extractorId == "" {
+		http.Error(w, "Needs to provide an extractor id", http.StatusBadRequest)
+		return
+	}
+
+	ex, err := eh.service.Get(extractorId)
+	if dataaccess.IsNotFound(err) {
+		http.NotFound(w, r)
+		return
+	}
+
+	var um Unmarshaller
+	defer r.Body.Close()
+	switch mm {
+	case mime_yaml:
+		um = yaml.NewDecoder(r.Body)
+	case mime_json:
+		um = json.NewDecoder(r.Body)
+	default:
+		http.Error(w, "Only yaml or json allowed", http.StatusUnsupportedMediaType)
+		return
+	}
+
+	var e scheduler.ExtractionRequest
+	err = um.Decode(&e)
+	if err != nil {
+		http.Error(w, "Malformed payload", http.StatusBadRequest)
+		return
+	}
+
+	reportId, err := eh.scheduler.Schedule(ex, e)
+	if err != nil {
+		http.Error(w, "Error while scheduling extractor for request", http.StatusInternalServerError)
+		log.Println("Error while scheduling", err, e)
+		return
+	}
+
+	w.Header().Set("Location", "/report/"+reportId)
+	w.WriteHeader(http.StatusAccepted)
+	return
+
+}
+
+type HtmlExtractorScheduler struct {
+}
+
+func (hes *HtmlExtractorScheduler) Schedule(extractor extractor.Extractor, payload interface{}) (string, error) {
+	switch payload.(type) {
+	}
+
+	return "", nil
 }
 
 func (eh *ExtractorHandler) GetReport(w http.ResponseWriter, r *http.Request, params httprouter.Params) {

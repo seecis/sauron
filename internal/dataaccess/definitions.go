@@ -11,6 +11,7 @@ import (
 	"gopkg.in/yaml.v2"
 	"os"
 	"fmt"
+	"strings"
 )
 
 type errorType int
@@ -44,6 +45,10 @@ type ExtractorService interface {
 	Delete(id string) error
 }
 
+type ReportService interface {
+	WriteAsReport(reportId string, field *extractor.Field) error
+}
+
 // Todo: Move this code somewhere else
 // Todo: Maybe put a config for this dude?
 type FileSystemExtractorService struct {
@@ -63,6 +68,14 @@ func NewFileSystemExtractorService(basePath string) ExtractorService {
 	}
 }
 
+func NewFileSystemReportService(basePath string) ReportService {
+	service := FileSystemReportService{
+		path: basePath,
+	}
+
+	return &service
+}
+
 // returns: if there is an error the type of it is always *DataServiceError
 func (fses *FileSystemExtractorService) GetAll() ([]extractor.Extractor, error) {
 	files, err := ioutil.ReadDir(fses.basePath)
@@ -76,9 +89,11 @@ func (fses *FileSystemExtractorService) GetAll() ([]extractor.Extractor, error) 
 
 	var extractors []extractor.Extractor
 	for _, v := range files {
-		ex, _ := fses.Get(v.Name())
+		fileName := v.Name()
+		extractorName := fileName[0:strings.Index(fileName, ".yaml")]
+		ex, _ := fses.Get(extractorName)
 		//todo: no!
-		extractors = append(extractors, ex.(*extractor.HtmlExtractor))
+		extractors = append(extractors, ex)
 	}
 
 	return extractors, nil
@@ -172,5 +187,20 @@ func buildUnknownError(err error) *DataServiceError {
 	}
 }
 
-type ReportService interface {
+type FileSystemReportService struct {
+	path string
+}
+
+func (fsrs *FileSystemReportService) WriteAsReport(reportId string, field *extractor.Field) error {
+	file, err := os.Create(fsrs.path + reportId + ".yml")
+	if err != nil {
+		return buildUnknownError(err)
+	}
+
+	err = yaml.NewEncoder(file).Encode(field)
+	if err != nil {
+		return buildUnknownError(err)
+	}
+
+	return nil
 }

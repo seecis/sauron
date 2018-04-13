@@ -6,22 +6,16 @@
 package cmd
 
 import (
-	"fmt"
 	"github.com/spf13/cobra"
 )
 
-var webPort string
-var bindIp string
-
-// serveCmd represents the serve command
-var serveCmd = &cobra.Command{
-	Use:   "serve",
-	Short: "Serves sauron",
+var extractorCmd = &cobra.Command{
+	Use:   "extractor",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("serve called")
+		cmd.Help()
 	},
 }
 
 func init() {
-	rootCmd.AddCommand(serveCmd)
+	rootCmd.AddCommand(extractorCmd)
 }
