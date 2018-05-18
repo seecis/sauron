@@ -50,7 +50,7 @@ import (
 	"strconv"
 )
 
-func StartServer(ip, port string) {
+func ServeApi(ip, port string) {
 
 	// todo add this to config.
 	fses := dataaccess.NewFileSystemExtractorService("extractors/")

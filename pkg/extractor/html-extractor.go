@@ -12,6 +12,7 @@ import (
 	"strings"
 	"log"
 	"fmt"
+	"github.com/segmentio/ksuid"
 )
 
 type Query struct {
@@ -23,8 +24,13 @@ type Query struct {
 }
 
 type HtmlExtractor struct {
-	Name    string  `json:"name,omitempty" yaml:"name,omitempty"`
-	Queries []Query `json:"queries" yaml:"queries"`
+	Name    string      `json:"name,omitempty" yaml:"name,omitempty"`
+	Queries []Query     `json:"queries" yaml:"queries"`
+	Uid     ksuid.KSUID `json:"id" yaml:"id"`
+}
+
+func (he HtmlExtractor) GetUid() ksuid.KSUID {
+	return he.Uid
 }
 
 func openDocument(reader io.Reader) (Queryable, error) {

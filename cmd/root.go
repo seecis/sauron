@@ -12,7 +12,6 @@ import (
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"log"
 )
 
 var cfgFile string
@@ -65,7 +64,5 @@ func initConfig() {
 	err := viper.ReadInConfig()
 	if err == nil {
 		fmt.Println("Using config file:", viper.ConfigFileUsed())
-	} else {
-		log.Fatal("Error while reading from config", err)
 	}
 }

@@ -7,6 +7,7 @@ package extractor
 
 import (
 	"io"
+	"github.com/segmentio/ksuid"
 )
 
 type Field struct {
@@ -18,4 +19,5 @@ type Field struct {
 type Extractor interface {
 	Extract(reader io.Reader) (*Field, error)
 	GetName() string
+	GetUid() ksuid.KSUID
 }

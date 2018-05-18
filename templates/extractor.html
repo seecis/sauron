@@ -1,0 +1,25 @@
+<html>
+
+<head>
+    <script>
+
+        var fetch = function fetchUrl(url) {
+            console.log(url);
+            var iframe = document.getElementById("iframe")
+            iframe.src = url;
+        }
+
+    </script>
+</head>
+<body>
+
+
+<h1>Create extractor</h1>
+<input type="text" title="URL" id="urlInput">
+
+
+<button onclick="fetch(document.getElementById('urlInput').value)">Submit</button>
+
+<iframe id="iframe" csp="*"></iframe>
+</body>
+</html>

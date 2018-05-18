@@ -6,9 +6,8 @@
 package cmd
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
+	"github.com/seecis/sauron/internal/http"
 )
 
 var serverAddress string
@@ -22,7 +21,7 @@ var frontendCmd = &cobra.Command{
 	Short: "Starts a html frontend server for sauron",
 	Long:  `This command needs a working sauron backend to work.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("web called")
+		http.ServeWeb(frontendIp, frontendPort)
 	},
 }
 
@@ -45,8 +44,4 @@ func init() {
 		"i",
 		"127.0.0.1",
 		"Ip will listen to this ip")
-
-	frontendCmd.MarkFlagRequired("port")
-	frontendCmd.MarkFlagRequired("ip")
-
 }
