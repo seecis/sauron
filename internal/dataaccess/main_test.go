@@ -16,6 +16,7 @@ import _ "github.com/jinzhu/gorm/dialects/mssql"
 
 var (
 	e ExtractorService
+	r ReportService
 	g *gorm.DB
 )
 
@@ -38,10 +39,16 @@ func setup() {
 	}
 
 	b := &MSSQLExtractorService{g: g.Debug()}
+	c := &MSSQLReportService{g: g.Debug()}
+
 	err = b.Migrate()
 	if err != nil {
 		log.Fatal()
 	}
 
+	err = c.Migrate()
+
 	e = b
+	r = c
 }
+

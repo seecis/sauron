@@ -48,3 +48,29 @@ func TestMSSQLExtractorService_Get(t *testing.T) {
 		t.FailNow()
 	}
 }
+
+func TestMSSQLReportService_WriteAsReport(t *testing.T) {
+	field := extractor.Field{
+		Label: "Q1",
+		Data:  "D1",
+		Subfields: []extractor.Field{
+			{
+				Label:     "Q1.1",
+				Data:      "d1.1",
+				Subfields: nil,
+			},
+			{
+				Label:     "Q1.2",
+				Data:      "d1.2",
+				Subfields: nil,
+			},
+		},
+	}
+
+	err := r.WriteAsReport(ksuid.New().String(), &field)
+
+	if err != nil {
+		fmt.Println(err)
+		t.FailNow()
+	}
+}

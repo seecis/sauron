@@ -53,8 +53,10 @@ import (
 func ServeApi(ip, port string) {
 
 	// todo add this to config.
-	fses := dataaccess.NewFileSystemExtractorService("extractors/")
-	eh := &ExtractorHandler{service: fses}
+	//fses := dataaccess.NewFileSystemExtractorService("extractors/")
+	mses := dataaccess.NewMsSqlExtractorService(true, false)
+	eh := &ExtractorHandler{service: mses}
+
 	router := httprouter.New()
 	router.GET("/", index)
 	router.GET("/extractor", eh.GetAll)
@@ -281,8 +283,14 @@ func (eh *ExtractorHandler) UpdateExtractor(w http.ResponseWriter, r *http.Reque
 			return
 		}
 
-		log.Println(err)
+		log.Println(err.Error())
+		if dataaccess.IsBadRequest(err) {
+			http.Error(w, "Bad request", http.StatusBadRequest)
+			return
+		}
+
 		http.Error(w, "An error occurred", http.StatusInternalServerError)
+		return
 	}
 
 	defer r.Body.Close()

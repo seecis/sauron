@@ -11,9 +11,44 @@ import (
 	"github.com/segmentio/ksuid"
 	"time"
 	"github.com/pkg/errors"
+	"log"
+	_ "github.com/jinzhu/gorm/dialects/mssql"
 )
 
 type QueryArr []Query
+
+type Query struct {
+	ID              uint       `gorm:"primary_key"`
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+	DeletedAt       *time.Time `sql:"index"`
+	Selector        string
+	Name            string
+	ForEachChildren bool
+	SubQueries      *QueryArr
+	Trim            bool
+}
+
+type HtmlExtractor struct {
+	ID            uint          `gorm:"primary_key"`
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+	DeletedAt     *time.Time    `sql:"index"`
+	Name          string
+	Queries       QueryArr
+	MetaExtractor MetaExtractor `gorm:"polymorphic:Extractor;"`
+}
+
+type MetaExtractor struct {
+	ID            uint       `gorm:"primary_key"`
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+	DeletedAt     *time.Time `sql:"index"`
+	UID           []byte
+	Name          string
+	ExtractorType string
+	ExtractorId   uint64
+}
 
 func (q *Query) FromDomainModel(e extractor.Query) *Query {
 	subqueries := (&QueryArr{}).FromDomainModel(e.SubQueries)
@@ -67,7 +102,6 @@ func (qa *QueryArr) ToDomainModel(g *gorm.DB) ([]extractor.Query, error) {
 }
 
 func (*HtmlExtractor) FromDomainModel(e extractor.HtmlExtractor) (*HtmlExtractor, error) {
-
 	return &HtmlExtractor{
 		Name:    e.Name,
 		Queries: (&QueryArr{}).FromDomainModel(e.Queries),
@@ -78,48 +112,11 @@ func (*HtmlExtractor) FromDomainModel(e extractor.HtmlExtractor) (*HtmlExtractor
 	}, nil
 }
 
-type Query struct {
-	ID              uint       `gorm:"primary_key"`
-	CreatedAt       time.Time
-	UpdatedAt       time.Time
-	DeletedAt       *time.Time `sql:"index"`
-	Selector        string
-	Name            string
-	ForEachChildren bool
-	SubQueries      *QueryArr
-	Trim            bool
-}
-
-type HtmlExtractor struct {
-	ID            uint          `gorm:"primary_key"`
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
-	DeletedAt     *time.Time    `sql:"index"`
-	Name          string
-	Queries       QueryArr
-	MetaExtractor MetaExtractor `gorm:"polymorphic:Extractor;"`
-}
-
-type MetaExtractor struct {
-	ID            uint       `gorm:"primary_key"`
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
-	DeletedAt     *time.Time `sql:"index"`
-	UID           []byte
-	Name          string
-	ExtractorType string
-	ExtractorId   uint64
-}
-
-func (m *MSSQLExtractorService) Migrate() error {
-	return m.g.AutoMigrate(&MetaExtractor{}, &HtmlExtractor{}, &Query{}).Error
-}
-
 func (e *MetaExtractor) ToDomainModel(g *gorm.DB) (extractor.Extractor, error) {
 	switch e.ExtractorType {
 	case "html_extractors":
 		h := HtmlExtractor{}
-		err := g.Model(e).Related(&h,"ExtractorId").Error
+		err := g.Model(e).Related(&h, "ExtractorId").Error
 		if err != nil {
 			return nil, err
 		}
@@ -181,13 +178,28 @@ func (m *MSSQLExtractorService) saveHtmlExtractor(htmlExtractor extractor.HtmlEx
 func (m *MSSQLExtractorService) Get(id string) (extractor.Extractor, error) {
 	k, err := ksuid.Parse(id)
 	if err != nil {
-		return nil, err
+		return nil, &DataServiceError{
+			UnderlyingError: err,
+			ErrorType:       BadRequestData,
+			ShouldPanic:     false,
+		}
 	}
 
 	me := MetaExtractor{}
 	err = m.g.First(&me, "uid = ?", k.Bytes()).Error
 	if err != nil {
-		return nil, err
+		dse := &DataServiceError{
+			UnderlyingError: err,
+			ErrorType:       Unknown,
+			ShouldPanic:     false,
+		}
+
+		if gorm.IsRecordNotFoundError(err) {
+			dse.ErrorType = FileNotFound
+			return nil, dse
+		}
+
+		return nil, dse
 	}
 
 	return me.ToDomainModel(m.g)
@@ -195,4 +207,117 @@ func (m *MSSQLExtractorService) Get(id string) (extractor.Extractor, error) {
 
 func (m *MSSQLExtractorService) Delete(id string) error {
 	return errors.New("Not Implemented")
+}
+
+func (m *MSSQLExtractorService) Migrate() error {
+	return m.g.AutoMigrate(&MetaExtractor{}, &HtmlExtractor{}, &Query{}).Error
+}
+
+// todo: add config.
+func NewMsSqlExtractorService(migrate bool, debug bool) (m *MSSQLExtractorService) {
+	g, err := gorm.Open("mssql", "sqlserver://sa:AAABBBccc123@192.168.99.102:1433?database=sauron")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if debug {
+		g = g.Debug()
+	}
+
+	m = &MSSQLExtractorService{g: g}
+	if !migrate {
+		return
+	}
+
+	err = m.Migrate()
+	if err != nil {
+		log.Fatal()
+	}
+
+	return
+}
+
+type MSSQLReportService struct {
+	g *gorm.DB
+}
+
+type Report struct {
+	ID        uint64     `gorm:"primary_key"`
+	UID       []byte
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	DeletedAt *time.Time `sql:"index"`
+	Field     Field
+	FieldId   uint64
+}
+
+type Field struct {
+	ID        uint64     `gorm:"primary_key"`
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	DeletedAt *time.Time `sql:"index"`
+	SubFields []Field    `gorm:"foreignKey:ParentId"`
+	Label     string
+	Data      string
+	ParentId  uint64
+}
+
+type FieldArray []Field
+
+func (f *FieldArray) fromDomainModel(dm []extractor.Field) FieldArray {
+	arr := make([]Field, len(dm), len(dm))
+	for k, v := range dm {
+		arr[k] = *(&Field{}).fromDomainModel(&v)
+	}
+
+	return arr
+}
+
+func (f *Field) fromDomainModel(field *extractor.Field) *Field {
+	fa := (&FieldArray{}).fromDomainModel(field.Subfields)
+	ff := []Field(fa)
+	return &Field{
+		SubFields: ff,
+		Label:     field.Label,
+		Data:      field.Data,
+	}
+}
+
+func (r *MSSQLReportService) WriteAsReport(reportId string, field *extractor.Field) error {
+	k, err := ksuid.Parse(reportId)
+	if err != nil {
+		return &DataServiceError{
+			UnderlyingError: err,
+			ErrorType:       BadRequestData,
+			ShouldPanic:     false,
+		}
+	}
+
+	f := (&Field{}).fromDomainModel(field)
+	report := Report{
+		UID:   k.Bytes(),
+		Field: *f,
+	}
+
+	err = r.g.Save(&report).Error
+	if err != nil {
+		dse := &DataServiceError{
+			UnderlyingError: err,
+			ErrorType:       Unknown,
+			ShouldPanic:     false,
+		}
+
+		if gorm.IsRecordNotFoundError(err) {
+			dse.ErrorType = FileNotFound
+			return dse
+		}
+
+		return err
+	}
+
+	return nil
+}
+
+func (r *MSSQLReportService) Migrate() error {
+	return r.g.AutoMigrate(&Report{}, &Field{}).Error
 }
