@@ -23,11 +23,12 @@ var workerCmd = &cobra.Command{
 	Long: `Workers are capable of running scheduled jobs`,
 	Run: func(cmd *cobra.Command, args []string) {
 		ew := ExtractionWorker{
-			reportService:    dataaccess.NewFileSystemReportService("reports/"),
-			extractorService: dataaccess.NewFileSystemExtractorService("extractors/"),
+			reportService:    dataaccess.NewMSSQLReportService(false, false),
+			extractorService: dataaccess.NewMsSqlExtractorService(false, false),
 		}
 
-		master := machinery.NewMachineryWithBrokerAddress(machineryBrokerAddress)
+		v := viper.GetString("machinery-broker")
+		master := machinery.NewMachineryWithBrokerAddress(v)
 		w := master.NewWorker("worker", 1)
 		master.RegisterTask("extract", ew.Extract)
 		err := w.Launch()
@@ -76,10 +77,10 @@ func init() {
 	rootCmd.AddCommand(workerCmd)
 
 	//Todo: maybe add another scheduling mechanism
-	workerCmd.PersistentFlags().StringVar(&machineryBrokerAddress,
+	workerCmd.Flags().StringVar(&machineryBrokerAddress,
 		"machinery-broker",
 		"redis://192.168.99.100:6379",
 		"Provide address for machinery")
 
-	viper.BindPFlag("machinery-broker", workerCmd.PersistentFlags().Lookup("machinery-broker"))
+	viper.BindPFlag("machinery-broker", workerCmd.Flags().Lookup("machinery-broker"))
 }

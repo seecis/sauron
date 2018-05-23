@@ -15,7 +15,49 @@ import (
 	_ "github.com/jinzhu/gorm/dialects/mssql"
 )
 
+var g *gorm.DB
+
+func initGorm(debug bool) {
+	var err error
+	if g == nil {
+		g, err = gorm.Open("mssql", "sqlserver://sa:AAABBBccc123@192.168.99.102:1433?database=sauron")
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	g = g.Set("gorm:auto_preload", true)
+	if debug {
+		g = g.Debug()
+	}
+
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
 type QueryArr []Query
+
+type Report struct {
+	ID        uint64     `gorm:"primary_key"`
+	UID       []byte
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	DeletedAt *time.Time `sql:"index"`
+	Field     Field
+	FieldId   uint64
+}
+
+type Field struct {
+	ID        uint64     `gorm:"primary_key"`
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	DeletedAt *time.Time `sql:"index"`
+	SubFields []Field    `gorm:"foreignKey:ParentId"`
+	Label     string
+	Data      string
+	ParentId  uint64
+}
 
 type Query struct {
 	ID              uint       `gorm:"primary_key"`
@@ -27,6 +69,7 @@ type Query struct {
 	ForEachChildren bool
 	SubQueries      *QueryArr
 	Trim            bool
+	OwnerId         uint64
 }
 
 type HtmlExtractor struct {
@@ -35,7 +78,7 @@ type HtmlExtractor struct {
 	UpdatedAt     time.Time
 	DeletedAt     *time.Time    `sql:"index"`
 	Name          string
-	Queries       QueryArr
+	Queries       []Query       `gorm:"foreignKey:OwnerId"`
 	MetaExtractor MetaExtractor `gorm:"polymorphic:Extractor;"`
 }
 
@@ -61,7 +104,7 @@ func (q *Query) FromDomainModel(e extractor.Query) *Query {
 	}
 }
 
-func (q *QueryArr) FromDomainModel(eqs [] extractor.Query) QueryArr {
+func (qa *QueryArr) FromDomainModel(eqs [] extractor.Query) QueryArr {
 	var ea QueryArr
 
 	for _, v := range eqs {
@@ -72,9 +115,15 @@ func (q *QueryArr) FromDomainModel(eqs [] extractor.Query) QueryArr {
 }
 
 func (q *Query) ToDomainModel(g *gorm.DB) (extractor.Query, error) {
-	subQueries, err := q.SubQueries.ToDomainModel(g)
-	if err != nil {
-		return extractor.Query{}, err
+	var subQueries []extractor.Query
+	arr := q.SubQueries
+
+	if arr != nil {
+		var err error
+		subQueries, err = arr.ToDomainModel(g)
+		if err != nil {
+			return extractor.Query{}, err
+		}
 	}
 
 	return extractor.Query{
@@ -121,7 +170,8 @@ func (e *MetaExtractor) ToDomainModel(g *gorm.DB) (extractor.Extractor, error) {
 			return nil, err
 		}
 
-		queries, err := h.Queries.ToDomainModel(g)
+		qa := QueryArr(h.Queries)
+		queries, err := qa.ToDomainModel(g)
 		if err != nil {
 			return nil, err
 		}
@@ -148,16 +198,39 @@ type MSSQLExtractorService struct {
 
 func (m *MSSQLExtractorService) GetAll() ([]extractor.Extractor, error) {
 
-	return nil, errors.New("Not Implemented")
+	var ma []MetaExtractor
+
+	err := m.g.Find(&ma).Error
+
+	// todo: wrap this
+	if err != nil {
+		return nil, err
+	}
+
+	des := make([]extractor.Extractor, len(ma), len(ma))
+
+	for k, v := range ma {
+		dm, e := v.ToDomainModel(m.g)
+		if e != nil {
+			return nil, e
+		}
+
+		des[k] = dm
+	}
+
+	return des, nil
+
 }
 
 func (m *MSSQLExtractorService) Save(e extractor.Extractor) (string, error) {
 	switch e.(type) {
-	case extractor.HtmlExtractor:
-		return m.saveHtmlExtractor(e.(extractor.HtmlExtractor))
+	case *extractor.HtmlExtractor:
+
+		eh := e.(*extractor.HtmlExtractor)
+		return m.saveHtmlExtractor(*eh)
 	}
 
-	return "", nil
+	return "", errors.New("Unknown type")
 }
 
 func (m *MSSQLExtractorService) saveHtmlExtractor(htmlExtractor extractor.HtmlExtractor) (string, error) {
@@ -213,23 +286,31 @@ func (m *MSSQLExtractorService) Migrate() error {
 	return m.g.AutoMigrate(&MetaExtractor{}, &HtmlExtractor{}, &Query{}).Error
 }
 
+func NewMSSQLReportService(migrate, debug bool) *MSSQLReportService {
+	initGorm(debug)
+	m := &MSSQLReportService{g: g}
+
+	if !migrate {
+		return m
+	}
+
+	err := m.Migrate()
+	if err != nil {
+		log.Fatal()
+	}
+
+	return m
+}
+
 // todo: add config.
 func NewMsSqlExtractorService(migrate bool, debug bool) (m *MSSQLExtractorService) {
-	g, err := gorm.Open("mssql", "sqlserver://sa:AAABBBccc123@192.168.99.102:1433?database=sauron")
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	if debug {
-		g = g.Debug()
-	}
-
+	initGorm(debug)
 	m = &MSSQLExtractorService{g: g}
 	if !migrate {
 		return
 	}
 
-	err = m.Migrate()
+	err := m.Migrate()
 	if err != nil {
 		log.Fatal()
 	}
@@ -239,27 +320,6 @@ func NewMsSqlExtractorService(migrate bool, debug bool) (m *MSSQLExtractorServic
 
 type MSSQLReportService struct {
 	g *gorm.DB
-}
-
-type Report struct {
-	ID        uint64     `gorm:"primary_key"`
-	UID       []byte
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	DeletedAt *time.Time `sql:"index"`
-	Field     Field
-	FieldId   uint64
-}
-
-type Field struct {
-	ID        uint64     `gorm:"primary_key"`
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	DeletedAt *time.Time `sql:"index"`
-	SubFields []Field    `gorm:"foreignKey:ParentId"`
-	Label     string
-	Data      string
-	ParentId  uint64
 }
 
 type FieldArray []Field
