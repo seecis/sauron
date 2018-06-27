@@ -10,9 +10,11 @@ import (
 	"github.com/seecis/sauron/internal/machinery"
 	"log"
 	"github.com/seecis/sauron/internal/dataaccess"
-	"net/http"
-	"time"
 	"github.com/spf13/viper"
+	"fmt"
+	"net/http"
+	"net/http/httputil"
+	"github.com/davecgh/go-spew/spew"
 )
 
 // workerCmd represents the worker command
@@ -23,8 +25,8 @@ var workerCmd = &cobra.Command{
 	Long: `Workers are capable of running scheduled jobs`,
 	Run: func(cmd *cobra.Command, args []string) {
 		ew := ExtractionWorker{
-			reportService:    dataaccess.NewMSSQLReportService(false, false),
-			extractorService: dataaccess.NewMsSqlExtractorService(false, false),
+			reportService:    dataaccess.NewMSSQLReportService(true, false),
+			extractorService: dataaccess.NewMsSqlExtractorService(true, false),
 		}
 
 		v := viper.GetString("machinery-broker")
@@ -45,28 +47,27 @@ type ExtractionWorker struct {
 	extractorService dataaccess.ExtractorService
 }
 
-func (ew *ExtractionWorker) Extract(url, extractorId, reportId string) error {
+func (ew *ExtractionWorker) Extract(url string, extractorId, reportId string) error {
 	extractor, err := ew.extractorService.Get(extractorId)
 	if err != nil {
 		return err
 	}
 
-	hc := http.Client{
-		Timeout: 10 * time.Second,
-	}
-
-	res, err := hc.Get(url)
+	res, err := http.DefaultClient.Get("http://localhost:8092/new?url="+url)
 	if err != nil {
-		// Todo: Figure this out
 		return err
 	}
+	d, _ := httputil.DumpResponse(res, true)
+	fmt.Println(string(d))
 
-	defer res.Body.Close()
 	fields, err := extractor.Extract(res.Body)
+
 	if err != nil {
-		return err
+		fmt.Println(err)
+		log.Fatal(err)
 	}
 
+	spew.Dump(fields)
 	err = ew.reportService.WriteAsReport(reportId, fields)
 	return err
 }
@@ -79,7 +80,7 @@ func init() {
 	//Todo: maybe add another scheduling mechanism
 	workerCmd.Flags().StringVar(&machineryBrokerAddress,
 		"machinery-broker",
-		"redis://192.168.99.100:6379",
+		"redis://localhost:6379",
 		"Provide address for machinery")
 
 	viper.BindPFlag("machinery-broker", workerCmd.Flags().Lookup("machinery-broker"))

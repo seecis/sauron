@@ -1,0 +1,8 @@
+machinery-broker= "redis://localhost:6379"
+[database]
+driver = "mssql"
+username = "sa"
+password = "AAABBBccc123"
+host = "localhost"
+port = 1433
+database = "master"

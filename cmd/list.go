@@ -7,21 +7,22 @@ package cmd
 
 import (
 	"github.com/spf13/cobra"
-	"github.com/seecis/sauron/internal/dataaccess"
 	"log"
+	"fmt"
+	"github.com/seecis/sauron/cmd/util"
 )
 
 var listCmd = &cobra.Command{
 	Use:   "list",
 	Short: "Lists available executor ids",
 	Run: func(cmd *cobra.Command, args []string) {
-		extractors, err := dataaccess.NewFileSystemExtractorService("extractors/").GetAll()
+		extractors, err := util.DefaultSauronHttpClient.GetExtractors()
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		for _, v := range extractors {
-			println(v.GetName())
+		for k, v := range extractors {
+			fmt.Printf("%d %s [%s]\n", k+1, v.GetUid().String(), v.GetName())
 		}
 	},
 }

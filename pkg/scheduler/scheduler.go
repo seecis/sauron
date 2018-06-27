@@ -10,11 +10,11 @@ import (
 )
 
 type ExtractionScheduler interface {
-	Schedule(extractor extractor.Extractor, payload interface{}) (string, error)
+	Schedule(extractor extractor.Extractor, payload ExtractionRequest) (string, error)
 }
 
 type ExtractionRequest struct {
-	Urls string `json:"urls" yaml:"urls"`
+	Url string `json:"url" yaml:"url"`
 }
 
 

@@ -10,11 +10,12 @@ import (
 	"github.com/RichardKnop/machinery/v1/config"
 	"log"
 	"github.com/RichardKnop/machinery/v1/tasks"
+	"github.com/spf13/viper"
 )
 
 func NewMachineryWithBrokerAddress(address string) *machinery.Server {
 	cnf := config.Config{
-		Broker:        address,
+		Broker: address,
 		//Todo: maybe add this to config too?
 		DefaultQueue:  "sauron-html",
 		ResultBackend: address,
@@ -29,7 +30,7 @@ func NewMachineryWithBrokerAddress(address string) *machinery.Server {
 }
 
 func NewMachinery() *machinery.Server {
-	return NewMachineryWithBrokerAddress("redis://192.168.99.100:6379")
+	return NewMachineryWithBrokerAddress(viper.GetString("machinery-broker"))
 }
 
 func NewWorker() {
@@ -38,7 +39,7 @@ func NewWorker() {
 	w.Launch()
 }
 
-func NewExtractionJob(url, extractorId, reportId string) *tasks.Signature {
+func NewExtractionJob(url string, extractorId, reportId string) *tasks.Signature {
 	sig := tasks.Signature{
 		Name: "extract",
 		Args: []tasks.Arg{

@@ -13,14 +13,25 @@ import (
 	"github.com/pkg/errors"
 	"log"
 	_ "github.com/jinzhu/gorm/dialects/mssql"
+	"github.com/spf13/viper"
+	"fmt"
+	"strconv"
 )
 
 var g *gorm.DB
 
 func initGorm(debug bool) {
+	dbConf := viper.GetStringMap("database")
+
+	u := dbConf["username"]
+	p := dbConf["password"]
+	h := dbConf["host"]
+	po := dbConf["port"]
+	dbname := dbConf["database"]
+
 	var err error
 	if g == nil {
-		g, err = gorm.Open("mssql", "sqlserver://sa:AAABBBccc123@192.168.99.102:1433?database=sauron")
+		g, err = gorm.Open("mssql", fmt.Sprintf("sqlserver://%s:%s@%s:%d?database=%s", u, p, h, po, dbname))
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -36,27 +47,29 @@ func initGorm(debug bool) {
 	}
 }
 
+type FieldArray []Field
+
 type QueryArr []Query
 
 type Report struct {
-	ID        uint64     `gorm:"primary_key"`
-	UID       []byte
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	DeletedAt *time.Time `sql:"index"`
+	ID        uint64     `json:"-" gorm:"primary_key"`
+	UID       []byte     `json:"id"`
+	CreatedAt time.Time  `json:"-"`
+	UpdatedAt time.Time  `json:"-"`
+	DeletedAt *time.Time `json:"-" sql:"index"`
 	Field     Field
 	FieldId   uint64
 }
 
 type Field struct {
-	ID        uint64     `gorm:"primary_key"`
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	DeletedAt *time.Time `sql:"index"`
-	SubFields []Field    `gorm:"foreignKey:ParentId"`
-	Label     string
-	Data      string
-	ParentId  uint64
+	ID        uint64     `json:"id" gorm:"primary_key"`
+	CreatedAt time.Time  `json:"-"`
+	UpdatedAt time.Time  `json:"-"`
+	DeletedAt *time.Time `json:"-" sql:"index"`
+	SubFields []Field    `json:"subFields,omitempty" gorm:"foreignKey:ParentId"`
+	Label     string     `json:"label"`
+	Data      string     `json:"data"`
+	ParentId  uint64     `json:"-"`
 }
 
 type Query struct {
@@ -67,9 +80,10 @@ type Query struct {
 	Selector        string
 	Name            string
 	ForEachChildren bool
-	SubQueries      *QueryArr
+	SubQueries      []Query    `gorm:"foreignKey:ParentQueryId"`
 	Trim            bool
-	OwnerId         uint64
+	ExtractorId     uint64
+	ParentQueryId   uint64
 }
 
 type HtmlExtractor struct {
@@ -78,8 +92,8 @@ type HtmlExtractor struct {
 	UpdatedAt     time.Time
 	DeletedAt     *time.Time    `sql:"index"`
 	Name          string
-	Queries       []Query       `gorm:"foreignKey:OwnerId"`
-	MetaExtractor MetaExtractor `gorm:"polymorphic:Extractor;"`
+	Queries       []Query       `gorm:"foreignKey:ExtractorId"`
+	MetaExtractor MetaExtractor `gorm:"polymorphic:Extractor"`
 }
 
 type MetaExtractor struct {
@@ -87,21 +101,40 @@ type MetaExtractor struct {
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
 	DeletedAt     *time.Time `sql:"index"`
+	Url           string
 	UID           []byte
 	Name          string
 	ExtractorType string
 	ExtractorId   uint64
 }
 
+type MSSQLExtractorService struct {
+	g *gorm.DB
+}
+
+type MSSQLReportService struct {
+	g *gorm.DB
+}
+
 func (q *Query) FromDomainModel(e extractor.Query) *Query {
-	subqueries := (&QueryArr{}).FromDomainModel(e.SubQueries)
+	subqueries := (&QueryArr{}).FromDomainModelSlice(e.SubQueries)
 	return &Query{
 		Selector:        e.Selector,
 		Name:            e.Name,
 		ForEachChildren: e.ForEachChildren,
-		SubQueries:      &subqueries,
+		SubQueries:      subqueries,
 		Trim:            false,
 	}
+}
+
+func (qa *QueryArr) FromDomainModelSlice(eqs [] extractor.Query) []Query {
+	var ea QueryArr
+
+	for _, v := range eqs {
+		ea = append(ea, *(&Query{}).FromDomainModel(v))
+	}
+
+	return ea
 }
 
 func (qa *QueryArr) FromDomainModel(eqs [] extractor.Query) QueryArr {
@@ -120,13 +153,15 @@ func (q *Query) ToDomainModel(g *gorm.DB) (extractor.Query, error) {
 
 	if arr != nil {
 		var err error
-		subQueries, err = arr.ToDomainModel(g)
+		queryArr := QueryArr(arr)
+		subQueries, err = (&queryArr).ToDomainModel(g)
 		if err != nil {
 			return extractor.Query{}, err
 		}
 	}
 
 	return extractor.Query{
+		Id:              strconv.FormatUint(uint64(q.ID), 10),
 		Selector:        q.Selector,
 		Name:            q.Name,
 		ForEachChildren: q.ForEachChildren,
@@ -147,7 +182,6 @@ func (qa *QueryArr) ToDomainModel(g *gorm.DB) ([]extractor.Query, error) {
 	}
 
 	return bqs, nil
-
 }
 
 func (*HtmlExtractor) FromDomainModel(e extractor.HtmlExtractor) (*HtmlExtractor, error) {
@@ -157,6 +191,7 @@ func (*HtmlExtractor) FromDomainModel(e extractor.HtmlExtractor) (*HtmlExtractor
 		MetaExtractor: MetaExtractor{
 			UID:  e.Uid.Bytes(),
 			Name: e.Name,
+			Url:  e.Url,
 		},
 	}, nil
 }
@@ -165,7 +200,7 @@ func (e *MetaExtractor) ToDomainModel(g *gorm.DB) (extractor.Extractor, error) {
 	switch e.ExtractorType {
 	case "html_extractors":
 		h := HtmlExtractor{}
-		err := g.Model(e).Related(&h, "ExtractorId").Error
+		err := g.Set("gorm:auto_preload", true).Find(&h, e.ExtractorId).Error
 		if err != nil {
 			return nil, err
 		}
@@ -176,24 +211,47 @@ func (e *MetaExtractor) ToDomainModel(g *gorm.DB) (extractor.Extractor, error) {
 			return nil, err
 		}
 
+		if queries == nil {
+			queries = make([]extractor.Query, 0)
+		}
+
 		k, err := ksuid.FromBytes(e.UID[:])
 		return extractor.HtmlExtractor{
 			Name:    e.Name,
 			Queries: queries,
 			Uid:     k,
+			Url:     e.Url,
 		}, err
 	}
 
 	return nil, errors.New("Unknown type")
 }
 
+func (f *FieldArray) fromDomainModel(dm []extractor.Field) FieldArray {
+	var arr []Field
+	for _, v := range dm {
+		arr = append(arr, *(&Field{}).fromDomainModel(&v))
+	}
+
+	return arr
+}
+
+func (f *Field) fromDomainModel(field *extractor.Field) *Field {
+	fa := (&FieldArray{}).fromDomainModel(field.Subfields)
+	ff := []Field(fa)
+	if ff == nil {
+		fmt.Println("Subfields are null")
+	}
+	return &Field{
+		SubFields: ff,
+		Label:     field.Label,
+		Data:      field.Data,
+	}
+}
+
 func (e *MetaExtractor) BeforeCreate() error {
 	e.UID = ksuid.New().Bytes()
 	return nil
-}
-
-type MSSQLExtractorService struct {
-	g *gorm.DB
 }
 
 func (m *MSSQLExtractorService) GetAll() ([]extractor.Extractor, error) {
@@ -286,61 +344,21 @@ func (m *MSSQLExtractorService) Migrate() error {
 	return m.g.AutoMigrate(&MetaExtractor{}, &HtmlExtractor{}, &Query{}).Error
 }
 
-func NewMSSQLReportService(migrate, debug bool) *MSSQLReportService {
-	initGorm(debug)
-	m := &MSSQLReportService{g: g}
-
-	if !migrate {
-		return m
-	}
-
-	err := m.Migrate()
+func (m *MSSQLReportService) Get(id string) (*Report, error) {
+	var r Report
+	k, err := ksuid.Parse(id)
 	if err != nil {
-		log.Fatal()
+		return nil, err
 	}
 
-	return m
+	err = m.g.Set("gorm:auto_preload", false).Find(&r, "uid = ?", k.Bytes()).Error
+	return &r, err
 }
 
-// todo: add config.
-func NewMsSqlExtractorService(migrate bool, debug bool) (m *MSSQLExtractorService) {
-	initGorm(debug)
-	m = &MSSQLExtractorService{g: g}
-	if !migrate {
-		return
-	}
-
-	err := m.Migrate()
-	if err != nil {
-		log.Fatal()
-	}
-
-	return
-}
-
-type MSSQLReportService struct {
-	g *gorm.DB
-}
-
-type FieldArray []Field
-
-func (f *FieldArray) fromDomainModel(dm []extractor.Field) FieldArray {
-	arr := make([]Field, len(dm), len(dm))
-	for k, v := range dm {
-		arr[k] = *(&Field{}).fromDomainModel(&v)
-	}
-
-	return arr
-}
-
-func (f *Field) fromDomainModel(field *extractor.Field) *Field {
-	fa := (&FieldArray{}).fromDomainModel(field.Subfields)
-	ff := []Field(fa)
-	return &Field{
-		SubFields: ff,
-		Label:     field.Label,
-		Data:      field.Data,
-	}
+func (r *MSSQLReportService) GetHeaders() ([]Report, error) {
+	var rs []Report
+	err := r.g.Set("gorm:auto_preload", false).Find(&rs).Error
+	return rs, err
 }
 
 func (r *MSSQLReportService) WriteAsReport(reportId string, field *extractor.Field) error {
@@ -380,4 +398,59 @@ func (r *MSSQLReportService) WriteAsReport(reportId string, field *extractor.Fie
 
 func (r *MSSQLReportService) Migrate() error {
 	return r.g.AutoMigrate(&Report{}, &Field{}).Error
+}
+
+func (r *MSSQLReportService) GetAllUnjoined() ([]Report, error) {
+
+	var reports []Report
+
+	err := r.g.Find(&reports).Limit(10).Error
+	return reports, err
+}
+func (r *MSSQLReportService) GetReportDetail(id string) (*Report, error) {
+	rep := Report{}
+	u, err := ksuid.Parse(id)
+	if err != nil {
+		return nil, err
+	}
+
+	err = r.g.Set("gorm:auto_preload", true).First(&rep, "uid = ?", u.Bytes()).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &rep, nil
+}
+
+func NewMSSQLReportService(migrate, debug bool) *MSSQLReportService {
+	initGorm(debug)
+	m := &MSSQLReportService{g: g}
+
+	if !migrate {
+		return m
+	}
+
+	err := m.Migrate()
+	if err != nil {
+		log.Fatal()
+	}
+
+	return m
+}
+
+// todo: add config.
+func NewMsSqlExtractorService(migrate bool, debug bool) (m *MSSQLExtractorService) {
+	initGorm(debug)
+	m = &MSSQLExtractorService{g: g}
+	if !migrate {
+		return
+	}
+
+	err := m.Migrate()
+	if err != nil {
+		log.Fatal()
+	}
+
+	return
 }

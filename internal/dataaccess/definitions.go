@@ -54,6 +54,8 @@ type ExtractorService interface {
 
 type ReportService interface {
 	WriteAsReport(reportId string, field *extractor.Field) error
+	GetHeaders() ([]Report, error)
+	Get(id string) (*Report, error)
 }
 
 func (e *DataServiceError) Error() string {

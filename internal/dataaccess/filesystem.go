@@ -11,6 +11,7 @@ import (
 	"strings"
 	"os"
 	"gopkg.in/yaml.v2"
+	"github.com/pkg/errors"
 )
 
 // Todo: Maybe put a config for this?
@@ -32,7 +33,13 @@ func NewFileSystemReportService(basePath string) ReportService {
 	return &service
 }
 
+func (fses *FileSystemReportService) GetHeaders() ([]Report, error) {
+	return nil, errors.New("Not implemented")
+}
 
+func (fses *FileSystemReportService) Get(id string) (*Report, error) {
+	return nil, errors.New("Not implemented")
+}
 // returns: if there is an error the type of it is always *DataServiceError
 func (fses *FileSystemExtractorService) GetAll() ([]extractor.Extractor, error) {
 	files, err := ioutil.ReadDir(fses.basePath)

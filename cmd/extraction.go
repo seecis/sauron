@@ -7,9 +7,9 @@ package cmd
 
 import (
 	"github.com/spf13/cobra"
-	"github.com/seecis/sauron/internal/machinery"
-	"github.com/pborman/uuid"
-	"log"
+	"github.com/seecis/sauron/cmd/util"
+	"fmt"
+	"os"
 )
 
 var extractionCmd = &cobra.Command{
@@ -17,26 +17,23 @@ var extractionCmd = &cobra.Command{
 	Short: "Schedules an extraction job",
 	Long:  `Schedules an extraction job for later execution. If a report id is not specified it will be created`,
 	Run: func(cmd *cobra.Command, args []string) {
-		m := machinery.NewMachinery()
-		_, err := m.SendTask(machinery.NewExtractionJob(url, extractorId, reportID))
+		id, err := util.DefaultSauronHttpClient.ScheduleExtraction(extractorId, url)
 		if err != nil {
-			log.Fatal(err)
+			fmt.Println(err)
+			os.Exit(-1)
 		}
 
-		println(reportID)
+		fmt.Println(id)
 	},
 }
 
 var url string
 var extractorId string
-var reportID string
 
 func init() {
 	scheduleCmd.AddCommand(extractionCmd)
-
 	extractionCmd.Flags().StringVar(&url, "url", "", "URL that extractor will be ran on")
-	extractionCmd.Flags().StringVarP(&extractorId, "extractor", "e", "", "extractor name")
-	extractionCmd.Flags().StringVarP(&reportID, "reportId", "r", uuid.New(), "reportId name")
+	extractionCmd.Flags().StringVarP(&extractorId, "extractor", "e", "", "extractor id")
 
 	extractionCmd.MarkFlagRequired("url")
 	extractionCmd.MarkFlagRequired("extractor")
