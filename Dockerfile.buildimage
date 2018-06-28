@@ -6,4 +6,3 @@ RUN apk add --no-cache git bzr
 # fetch govendor
 RUN go get github.com/kardianos/govendor
 
-ENTRYPOINT ["/go/bin/govendor"]
