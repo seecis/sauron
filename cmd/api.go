@@ -15,7 +15,7 @@ var apiCmd = &cobra.Command{
 	Use:   "api",
 	Short: "Serves sauron api",
 	Run: func(cmd *cobra.Command, args []string) {
-		http.StartServer(backendIp, backendPort)
+		http.ServeApi(backendIp, backendPort)
 	},
 }
 

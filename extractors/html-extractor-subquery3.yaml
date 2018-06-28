@@ -1,7 +1,0 @@
-name: "html-extractor-subquery"
-queries:
-  - selector : "nav.mt-3 > ul"
-    name : "menu"
-    forEachChildren: true
-    trim : true
-    subqueries:

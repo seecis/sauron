@@ -6,16 +6,17 @@
 package extractor
 
 import (
-	"bufio"
 	"gopkg.in/yaml.v2"
 	"io"
 	"github.com/PuerkitoBio/goquery"
 	"strings"
 	"log"
 	"fmt"
+	"github.com/segmentio/ksuid"
 )
 
 type Query struct {
+	Id 				string `json:"id" yaml:"id"`
 	Selector        string  `json:"selector" yaml:"selector"`
 	Name            string  `json:"name" yaml:"name"`
 	ForEachChildren bool    `json:"forEachChildren" yaml:"forEachChildren"`
@@ -24,11 +25,17 @@ type Query struct {
 }
 
 type HtmlExtractor struct {
-	Name    string  `json:"name,omitempty" yaml:"name,omitempty"`
-	Queries []Query `json:"queries" yaml:"queries"`
+	Name    string      `json:"name,omitempty" yaml:"name,omitempty"`
+	Queries []Query     `json:"queries" yaml:"queries"`
+	Url 	string		`json:"url" yaml:"url"`
+	Uid     ksuid.KSUID `json:"id" yaml:"id"`
 }
 
-func openDocument(reader *bufio.Reader) (Queryable, error) {
+func (he HtmlExtractor) GetUid() ksuid.KSUID {
+	return he.Uid
+}
+
+func openDocument(reader io.Reader) (Queryable, error) {
 	doc, err := goquery.NewDocumentFromReader(reader)
 	if err != nil {
 		return nil, err
@@ -37,7 +44,7 @@ func openDocument(reader *bufio.Reader) (Queryable, error) {
 	return &DocumentWrapper{doc}, nil
 }
 
-func (he *HtmlExtractor) Extract(reader *bufio.Reader) (*Field, error) {
+func (he HtmlExtractor) Extract(reader io.Reader) (*Field, error) {
 	doc, err := openDocument(reader)
 	if err != nil {
 		return nil, err
@@ -137,6 +144,11 @@ func executeSubqueries(document Queryable, queries []Query) ([]Field, error) {
 
 func executeQuery(document Queryable, query Query) (*Field, error) {
 	node := document.F(query.Selector)
+	ttt := node.Text()
+	_ = ttt
+	if ttt == ""{
+		fmt.Println((document.(*DocumentWrapper)).Html())
+	}
 	if query.Selector == "" {
 		node = document
 	}
@@ -192,9 +204,9 @@ func executeQuery(document Queryable, query Query) (*Field, error) {
 func NewHtmlExtractor(extractor io.Reader) Extractor {
 	var htmlExtractor HtmlExtractor
 	yaml.NewDecoder(extractor).Decode(&htmlExtractor)
-	return &htmlExtractor
+	return htmlExtractor
 }
 
-func (he *HtmlExtractor) GetName() string {
+func (he HtmlExtractor) GetName() string {
 	return he.Name
 }

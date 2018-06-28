@@ -3,10 +3,12 @@
 // Use of this source code is governed by an MIT-style
 // license that can be found in the LICENSE file.
 
-
 package extractor
 
-import "bufio"
+import (
+	"io"
+	"github.com/segmentio/ksuid"
+)
 
 type Field struct {
 	Label     string  `json:"label" yaml:"label"`
@@ -15,6 +17,7 @@ type Field struct {
 }
 
 type Extractor interface {
-	Extract(reader *bufio.Reader) (*Field, error)
+	Extract(reader io.Reader) (*Field, error)
 	GetName() string
+	GetUid() ksuid.KSUID
 }

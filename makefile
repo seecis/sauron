@@ -24,5 +24,4 @@ $(PLATFORMS):
 
 justbuildit: $(PLATFORMS)
 release: vendoring $(PLATFORMS)
-install:
-	$(GOCMD) install
+install: $(GOCMD) install

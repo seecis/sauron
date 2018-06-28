@@ -1,0 +1,4 @@
+FROM alpine
+COPY ./sauron /exec
+
+ENTRYPOINT /exec/sauron

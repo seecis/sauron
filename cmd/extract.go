@@ -24,7 +24,6 @@ var extractCmd = &cobra.Command{
 	Short: "Extracts data using given extractor from a file",
 	Long:  `Extracts data using given extractor from a file`,
 	Run: func(cmd *cobra.Command, args []string) {
-
 		yamlFile, err := os.Open(extractorFile)
 		if err != nil {
 			log.Fatal(err)
@@ -54,8 +53,8 @@ var extractCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(extractCmd)
-	extractCmd.Flags().StringVarP(&file, "file", "f", "", "Provide file to be extracted")
-	extractCmd.Flags().StringVarP(&extractorFile, "extractor", "e", "", "Extractor to be used")
+	extractCmd.Flags().StringVarP(&file, "file", "f", "", "File which extractor will be run on")
+	extractCmd.Flags().StringVarP(&extractorFile, "extractor", "e", "", "Extractor id")
 	extractCmd.Flags().StringVarP(&outputFormat, "outputFormat", "o", "yaml", "Output format: yaml, json")
 
 	extractCmd.MarkFlagFilename("extractor", "yml", "yaml")
