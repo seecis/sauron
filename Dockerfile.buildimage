@@ -3,6 +3,8 @@ FROM golang:1.10.3-alpine3.7
 # install git
 RUN apk add --no-cache git bzr
 
+RUN apk add build-essential
+
 # fetch govendor
 RUN go get github.com/kardianos/govendor
 
