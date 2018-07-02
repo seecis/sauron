@@ -1,0 +1,62 @@
+version: "3.3"
+
+services:
+  chrome-magic:
+    image: alpeware/chrome-headless-trunk
+    ports:
+      - 9222:9222
+    networks:
+      proxy_network:
+  mssql:
+    image: microsoft/mssql-server-linux
+    ports:
+      - 0.0.0.0:1433:1433
+    environment:
+      - ACCEPT_EULA=Y
+      - SA_PASSWORD=AAABBBccc123
+    volumes:
+      - .data:/var/opt/mssql
+    networks:
+      backend:
+  api:
+    networks:
+      backend:
+    image: saur-api
+    environment:
+      - HOME=/saur
+    entrypoint: /webserver/sauron serve api --config /saur/config.toml
+    volumes:
+      - ./config:/saur
+    ports:
+      - 9091:9091
+  proxy:
+    image: saur-api
+    environment:
+      - HOME=/saur
+    entrypoint: /webserver/sauron proxy --config /saur/config.toml
+    networks:
+      proxy_network:
+    volumes:
+      - ./config:/saur
+    ports:
+      - 8092:8092
+    expose:
+      - 8092
+  redis:
+    image: redis
+    ports:
+      - 6379:6379
+    networks:
+      backend:
+  worker:
+    image: saur-api
+    entrypoint: /webserver/sauron worker --config /saur/config.toml
+    volumes:
+      - ./config:/saur
+    networks:
+      backend:
+      proxy_network:
+
+networks:
+  proxy_network:
+  backend:

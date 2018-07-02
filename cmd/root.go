@@ -12,6 +12,7 @@ import (
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"io/ioutil"
 )
 
 var cfgFile string
@@ -38,7 +39,7 @@ func Execute() {
 
 func init() {
 	cobra.OnInitialize(initConfig)
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.sauron/config.yaml)")
+	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.sauron/config.toml)")
 	viper.SetConfigType("toml")
 }
 
@@ -56,14 +57,25 @@ func initConfig() {
 		}
 
 		viper.AddConfigPath(home)
-		viper.SetConfigName(".sauron/config.yaml")
+		fmt.Println("Looking for a config at " + home)
+
+		files, err := ioutil.ReadDir(home)
+		if err != nil {
+			panic(err)
+		}
+
+		for _, f := range files {
+			fmt.Println(f.Name())
+		}
+
+		viper.SetConfigFile("/env/config.toml")
 	}
+
 
 	viper.AutomaticEnv() // read in environment variables that match
 
 	// If a config file is found, read it in.
 	err := viper.ReadInConfig()
-	if err == nil {
-		fmt.Println("Using config file:", viper.ConfigFileUsed())
-	}
+	fmt.Println("Error while reading config", err)
+	fmt.Println("Using config file:", viper.ConfigFileUsed())
 }

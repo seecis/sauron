@@ -16,6 +16,7 @@ import (
 	"github.com/spf13/viper"
 	"fmt"
 	"strconv"
+	"github.com/davecgh/go-spew/spew"
 )
 
 var g *gorm.DB
@@ -23,6 +24,7 @@ var g *gorm.DB
 func initGorm(debug bool) {
 	dbConf := viper.GetStringMap("database")
 
+	spew.Dump(dbConf)
 	u := dbConf["username"]
 	p := dbConf["password"]
 	h := dbConf["host"]

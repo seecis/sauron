@@ -27,6 +27,10 @@ import (
 	"github.com/vanng822/go-premailer/premailer"
 	"net/url"
 	"github.com/rs/cors"
+	"github.com/davecgh/go-spew/spew"
+	errors2 "github.com/mkenney/go-errors"
+	"net"
+	"github.com/spf13/viper"
 )
 
 type Proxy struct {
@@ -44,29 +48,44 @@ type Handler struct {
 
 var browser *chrome.Chrome
 
-func StartProxy() {
+func StartProxy(ip, port string) {
+	proxyConf := viper.GetStringMap("proxy")
+	//ip="0.0.0.0"
+	//port="8092"
+	//chromium_addr="chromium_c
+	//chromium_port="9223"
+
+	ip = proxyConf["ip"].(string)
+	port = proxyConf["port"].(string)
+
+	ips, err := net.LookupIP(proxyConf["chromium_addr"].(string))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	chromePort := proxyConf["chromium_port"].(int64)
+
+	fmt.Println("Container resolved for")
+	for _, v := range ips {
+		fmt.Println(v)
+	}
+
+	chromeAddr := proxyConf["chromium_addr"]
+	chromePortInt := int(chromePort)
+
+	fmt.Println("Trying to connect to chrome at: ", chromeAddr, chromePortInt)
 	browser = chrome.New(
 		&chrome.Flags{
-			"addr":                     "localhost",
-			"disable-extensions":       nil,
-			"disable-gpu":              nil,
-			"hide-scrollbars":          nil,
-			"no-first-run":             nil,
-			"no-sandbox":               nil,
-			"port":                     9222,
-			"remote-debugging-address": "0.0.0.0",
-			"remote-debugging-port":    9222,
+			"addr": ips[0].String(),
+			"port": chromePortInt,
 		},
-		"C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe",
 		"",
-		"stdout.log",
+		"",
+		"",
 		"",
 	)
 
-	if err := browser.Launch(); nil != err {
-		panic(err)
-	}
-
+	browser.Tabs()
 	sessionsMap := make(map[string]Session)
 	defaultProxy = Proxy{
 		sessions: &sessionsMap,
@@ -75,10 +94,10 @@ func StartProxy() {
 	router := httprouter.New()
 	router.GET("/new", handleCreateSession)
 	router.GET("/proxied/:sessId/*req", getResource)
-	fmt.Println("Proxy is running at 0.0.0.0:8092")
 
-
-	http.ListenAndServe("0.0.0.0:8092", cors.AllowAll().Handler(router))
+	ad := fmt.Sprintf("%s:%s", ip, port)
+	fmt.Printf("Proxy is running at %s \n", ad)
+	http.ListenAndServe(ad, cors.AllowAll().Handler(router))
 }
 
 var defaultProxy Proxy
@@ -101,7 +120,17 @@ func getResource(w http.ResponseWriter, r *http.Request, params httprouter.Param
 
 	err = defaultProxy.RequestPage(sessionId, u, w)
 	if err != nil {
-		log.Fatal(err)
+		switch err.(type) {
+		case errors2.Err:
+			e := err.(errors2.Err)
+			for _, v := range e {
+				spew.Dump(v)
+			}
+
+			return
+		}
+
+		spew.Dump(err)
 		http.Error(w, "Unknown error", http.StatusInternalServerError)
 		return
 	}
@@ -251,7 +280,7 @@ func (p *Proxy) RequestPage(id string, url *url.URL, writer io.Writer) (error) {
 	// Open a tab and navigate to the URL you want to screenshot.
 	tab, err := browser.NewTab(url.String())
 	if nil != err {
-		panic(err)
+		return err
 	}
 
 	<-tab.DOM().Enable()
@@ -296,7 +325,7 @@ func (p *Proxy) RequestPage(id string, url *url.URL, writer io.Writer) (error) {
 				if attr.Key == "href" {
 					u := attr.Val
 					if strings.Index(u, "/") == 0 {
-						base:= url.Scheme + "://" + url.Host
+						base := url.Scheme + "://" + url.Host
 						attr.Val = base + u
 					}
 

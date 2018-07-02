@@ -25,6 +25,7 @@ var workerCmd = &cobra.Command{
 	Long: `Workers are capable of running scheduled jobs`,
 	Run: func(cmd *cobra.Command, args []string) {
 		ew := ExtractionWorker{
+			proxyUrl: viper.GetString("worker.proxy_url"),
 			reportService:    dataaccess.NewMSSQLReportService(true, false),
 			extractorService: dataaccess.NewMsSqlExtractorService(true, false),
 		}
@@ -43,6 +44,7 @@ var workerCmd = &cobra.Command{
 }
 
 type ExtractionWorker struct {
+	proxyUrl		 string
 	reportService    dataaccess.ReportService
 	extractorService dataaccess.ExtractorService
 }
@@ -53,7 +55,7 @@ func (ew *ExtractionWorker) Extract(url string, extractorId, reportId string) er
 		return err
 	}
 
-	res, err := http.DefaultClient.Get("http://localhost:8092/new?url="+url)
+	res, err := http.DefaultClient.Get(ew.proxyUrl + "/new?url="+url)
 	if err != nil {
 		return err
 	}

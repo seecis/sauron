@@ -54,10 +54,13 @@ import (
 	"github.com/segmentio/ksuid"
 	"net/http/httputil"
 	"time"
+	"github.com/spf13/viper"
+	"github.com/davecgh/go-spew/spew"
 )
 
 func ServeApi(ip, port string) {
 
+	spew.Dump(viper.AllKeys())
 	// todo add this to config.
 	//fses := dataaccess.NewFileSystemExtractorService("extractors/")
 	mses := dataaccess.NewMsSqlExtractorService(true, false)

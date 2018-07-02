@@ -1,0 +1,19 @@
+machinery-broker= "redis://redis:6379"
+[serve]
+    [serve.api]
+    ip="0.0.0.0"
+    port="9091"
+[database]
+driver = "mssql"
+username = "sa"
+password = "AAABBBccc123"
+host = "mssql"
+port = 1433
+database = "master"
+[proxy]
+ip="0.0.0.0"
+port="8092"
+chromium_addr="chrome-magic"
+chromium_port=9222
+[worker]
+proxy_url = "http://proxy:8092"

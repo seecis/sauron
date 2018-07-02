@@ -1,4 +1,10 @@
-FROM alpine
-COPY ./sauron /exec
+FROM ubuntu
+RUN apt update
+RUN apt install tree
+ADD dist/linux/amd64/sauron /webserver/sauron
+ADD default.toml /webserver/default.toml
+WORKDIR /webserver
+VOLUME /testenv
 
-ENTRYPOINT /exec/sauron
+EXPOSE 9091
+ENTRYPOINT ./sauron serve api
