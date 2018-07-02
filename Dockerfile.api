@@ -1,11 +1,10 @@
-FROM ubuntu
+FROM golang:1.10.3
 RUN apt update
-RUN apt install tree
-ADD dist/linux/amd64/sauron /webserver/sauron
-RUN chmod +x /webserver/sauron
-ADD default.toml /webserver/default.toml
-WORKDIR /webserver
-VOLUME /testenv
 
-EXPOSE 9091
-ENTRYPOINT ./sauron serve api
+RUN go get github.com/kardianos/govendor
+RUN mkdir -p /go/src/github.com/seecis/sauron
+WORKDIR /go/src/github.com/seecis/sauron
+COPY . .
+RUN make all
+
+ENTRYPOINT sauron
