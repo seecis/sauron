@@ -3,6 +3,7 @@ GOBUILD=$(GOCMD) build
 GOCLEAN=$(GOCMD) clean
 GOTEST=$(GOCMD) test
 GOGET=$(GOCMD) get
+GOINSTALL=$(GOCMD) install
 
 DISTRIBUTION_DIR=dist
 PLATFORMS := linux/amd64 windows/amd64
@@ -22,6 +23,8 @@ $(PLATFORMS):
 	$(info Building for $(os))
 	GOOS=$(os) GOARCH=$(arch) go build -o 'dist/$(os)/$(arch)/sauron$(ex$(os))' sauron.go
 
+install:
+	$(GOCMD) install
 justbuildit: $(PLATFORMS)
 release: vendoring $(PLATFORMS)
-install: $(GOCMD) install
+all: vendoring install
