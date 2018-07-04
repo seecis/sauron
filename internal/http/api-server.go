@@ -91,7 +91,14 @@ func ServeApi(ip, port string) {
 	mux := http.NewServeMux()
 	mux.Handle("/", router)
 
-	handler := cors.AllowAll().Handler(mux)
+	c := cors.New(cors.Options{
+		AllowedOrigins:   []string{"*"},
+		AllowedMethods:   []string{"HEAD", "GET", "POST", "PUT", "PATCH", "DELETE"},
+		AllowCredentials: true,
+		Debug:            false,
+		ExposedHeaders:   []string{"Location"}})
+
+	handler := c.Handler(mux)
 	fmt.Println("Sauron api is listening add ", address)
 	log.Fatal(http.ListenAndServe(address, handlers.LoggingHandler(multiout, handler)))
 }
@@ -406,7 +413,7 @@ func (eh *ExtractorHandler) GetReport(w http.ResponseWriter, r *http.Request, pa
 	}
 
 	report, err := eh.reportService.Get(id)
-	w.Header().Set("Content-Type","application/json")
+	w.Header().Set("Content-Type", "application/json")
 	err = json.NewEncoder(w).Encode(report)
 	if err != nil {
 		http.Error(w, "Error while handling request", http.StatusInternalServerError)
