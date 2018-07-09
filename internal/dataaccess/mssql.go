@@ -55,7 +55,7 @@ type QueryArr []Query
 
 type Report struct {
 	ID        uint64     `json:"-" gorm:"primary_key"`
-	UID       []byte     `json:"id"`
+	UID       []byte     `json:"-"`
 	CreatedAt time.Time  `json:"-"`
 	UpdatedAt time.Time  `json:"-"`
 	DeletedAt *time.Time `json:"-" sql:"index"`

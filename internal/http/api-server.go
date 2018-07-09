@@ -413,8 +413,18 @@ func (eh *ExtractorHandler) GetReport(w http.ResponseWriter, r *http.Request, pa
 	}
 
 	report, err := eh.reportService.Get(id)
+	k, err := ksuid.FromBytes(report.UID)
+	res := struct {
+		Id string `json:"id"`
+		Field dataaccess.Field
+	}{
+		k.String(),
+		report.Field,
+
+	}
+
 	w.Header().Set("Content-Type", "application/json")
-	err = json.NewEncoder(w).Encode(report)
+	err = json.NewEncoder(w).Encode(res)
 	if err != nil {
 		http.Error(w, "Error while handling request", http.StatusInternalServerError)
 		return
