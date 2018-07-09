@@ -456,6 +456,10 @@ func (eh *ExtractorHandler) GetReportHeaders(w http.ResponseWriter, r *http.Requ
 		})
 	}
 
+	if apiReports == nil {
+		 apiReports = []ApiReport{}
+	}
+
 	// Todo: make this work with yaml also
 	w.Header().Set("Content-Type", "application/json")
 	err = json.NewEncoder(w).Encode(apiReports)
