@@ -144,11 +144,6 @@ func executeSubqueries(document Queryable, queries []Query) ([]Field, error) {
 
 func executeQuery(document Queryable, query Query) (*Field, error) {
 	node := document.F(query.Selector)
-	ttt := node.Text()
-	_ = ttt
-	if ttt == ""{
-		fmt.Println((document.(*DocumentWrapper)).Html())
-	}
 	if query.Selector == "" {
 		node = document
 	}
