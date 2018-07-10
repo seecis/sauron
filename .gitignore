@@ -71,3 +71,4 @@ fabric.properties
 /dist/
 /vendor/*/
 /access_log*.txt
+/docker-compose.ai.yml
