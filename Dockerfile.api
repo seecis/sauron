@@ -5,9 +5,9 @@ RUN go get github.com/kardianos/govendor
 RUN mkdir -p /go/src/github.com/seecis/sauron
 WORKDIR /go/src/github.com/seecis/sauron
 COPY . .
-RUN make all
+RUN make release
 
-FROM alpine:latest
-COPY --from=0 /go/src/github.com/seecis/sauron/ .
-CMD ["./app"]
+FROM golang:1.10.3
+COPY --from=0 /go/src/github.com/seecis/sauron/dist/linux/amd64/ /sauron
+WORKDIR /sauron
 ENTRYPOINT sauron
