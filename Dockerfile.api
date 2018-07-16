@@ -10,4 +10,4 @@ RUN make release
 FROM golang:1.10.3
 COPY --from=0 /go/src/github.com/seecis/sauron/dist/linux/amd64/ /sauron
 WORKDIR /sauron
-ENTRYPOINT sauron
+ENTRYPOINT ["./sauron"]
