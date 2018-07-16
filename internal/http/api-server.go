@@ -23,7 +23,7 @@
 //	{
 //		"url":["example.com"]
 //	}
-//	Returns: [json, yaml], Created report Id, status
+//	Returns: [json, yaml], Created report Uid, status
 ///report/{reportId}
 //	create ??
 //	read
@@ -39,9 +39,7 @@ import (
 	"github.com/seecis/sauron/pkg/extractor"
 	"github.com/seecis/sauron/pkg/scheduler"
 	"github.com/julienschmidt/httprouter"
-	"github.com/pkg/errors"
 	"github.com/gorilla/handlers"
-	"gopkg.in/yaml.v2"
 	"io"
 	"os"
 	"log"
@@ -56,6 +54,10 @@ import (
 	"time"
 	"github.com/spf13/viper"
 	"github.com/davecgh/go-spew/spew"
+	"github.com/seecis/sauron/pkg/task-manager/client"
+	"github.com/seecis/sauron/pkg/task-manager"
+	"net/url"
+	"github.com/jinzhu/gorm"
 )
 
 func ServeApi(ip, port string) {
@@ -65,9 +67,14 @@ func ServeApi(ip, port string) {
 	//fses := dataaccess.NewFileSystemExtractorService("extractors/")
 	mses := dataaccess.NewMsSqlExtractorService(true, false)
 	rserv := dataaccess.NewMSSQLReportService(true, true)
-	eh := &ExtractorHandler{service: mses, scheduler: &HtmlExtractorScheduler{
-		machinery: machinery2.NewMachinery(),
-	}, reportService: rserv}
+	jserv := dataaccess.NewMSSQLJobService(true, true)
+
+	u, _ := url.Parse(viper.GetString("serve.scheduler_addr"))
+	eh := &ExtractorHandler{service: mses,
+		scheduler: &HtmlExtractorScheduler{machinery: machinery2.NewMachinery()},
+		reportService: rserv,
+		jobsService: jserv,
+		schedulerClient: client.NewClient(*u, nil)}
 
 	router := httprouter.New()
 	router.GET("/", index)
@@ -79,7 +86,12 @@ func ServeApi(ip, port string) {
 	router.POST("/extractor/:id", eh.UpdateExtractor)
 	router.POST("/extract/:id", eh.Extract)
 	router.GET("/report/:id", eh.GetReport)
-	router.GET("/report/", eh.GetReportHeaders)
+	router.HEAD("/report/", eh.GetReportHeaders)
+	router.GET("/report/", eh.GetReports)
+	router.GET("/job/", eh.GetAllJobs)
+	router.GET("/job/:id", eh.GetJob)
+	router.POST("/job/", eh.CreateJob)
+	router.POST("/start/job/:id", eh.StartJob)
 
 	address := fmt.Sprintf("%s:%s", ip, port)
 	log.Printf("Sauron is listening you at %s", address)
@@ -152,8 +164,7 @@ func index(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
 type mimeType int
 
 const (
-	mime_yaml mimeType = iota
-	mime_json
+	mime_json = iota
 )
 
 func getMimeType(typeHeader string) mimeType {
@@ -165,8 +176,6 @@ func getMimeType(typeHeader string) mimeType {
 	switch mediaType {
 	case "text/json":
 		return mime_json
-	case "application/yaml":
-		return mime_yaml
 	}
 
 	return mime_json
@@ -184,28 +193,21 @@ func getContentType(r *http.Request) mimeType {
 }
 
 type ExtractorHandler struct {
-	service       dataaccess.ExtractorService
-	reportService dataaccess.ReportService
-	scheduler     scheduler.ExtractionScheduler
+	service         dataaccess.ExtractorService
+	reportService   dataaccess.ReportService
+	scheduler       scheduler.ExtractionScheduler
+	jobsService     dataaccess.JobService
+	schedulerClient *client.Client
 }
 
 func (eh *ExtractorHandler) GetAll(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	res := getResponseType(r)
 	allExtractors, err := eh.service.GetAll()
 	if err != nil {
 		log.Panic(err)
 	}
 
-	switch res {
-	case mime_json:
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(allExtractors)
-	case mime_yaml:
-		w.Header().Set("Content-Type", "application/yaml")
-		yaml.NewEncoder(w).Encode(allExtractors)
-	}
-
-	return
+	w.Header().Set("Content-Type", "text/json")
+	json.NewEncoder(w).Encode(allExtractors)
 }
 
 type Unmarshaller interface {
@@ -213,37 +215,21 @@ type Unmarshaller interface {
 }
 
 func serialize(w http.ResponseWriter, thing interface{}, mimeType mimeType) error {
-	switch mimeType {
-	case mime_json:
-		return json.NewEncoder(w).Encode(thing)
-	case mime_yaml:
-		return yaml.NewEncoder(w).Encode(thing)
-	}
-
-	return errors.New("Unknown mime type")
+	return json.NewEncoder(w).Encode(thing)
 }
 
-func deserialize(r io.Reader, htmlExtractor *extractor.HtmlExtractor, mimeType mimeType) error {
-	var unMarshaller Unmarshaller
-	switch mimeType {
-	case mime_json:
-		unMarshaller = json.NewDecoder(r)
-	case mime_yaml:
-		unMarshaller = yaml.NewDecoder(r)
-	}
-
-	decode := unMarshaller.Decode(htmlExtractor)
+func deserialize(r io.Reader, htmlExtractor *extractor.HtmlExtractor) error {
+	decode := json.NewDecoder(r).Decode(htmlExtractor)
 	return decode
 }
 
 func (eh *ExtractorHandler) NewExtractor(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	typ := getContentType(r)
 	// Todo: we may need more magic here
 	var ex extractor.HtmlExtractor
 	rr, err := httputil.DumpRequest(r, true)
 
 	fmt.Println(string(rr), err)
-	err = deserialize(r.Body, &ex, typ)
+	err = deserialize(r.Body, &ex)
 	defer r.Body.Close()
 	if err != nil {
 		// Todo: make this warning
@@ -322,7 +308,7 @@ func (eh *ExtractorHandler) UpdateExtractor(w http.ResponseWriter, r *http.Reque
 
 	defer r.Body.Close()
 	var newEx extractor.HtmlExtractor
-	err = deserialize(r.Body, &newEx, getContentType(r))
+	err = deserialize(r.Body, &newEx)
 	if err != nil {
 		log.Println(err)
 		http.Error(w, "Error while deserializing request", http.StatusBadRequest)
@@ -343,8 +329,6 @@ func (eh *ExtractorHandler) UpdateExtractor(w http.ResponseWriter, r *http.Reque
 }
 
 func (eh *ExtractorHandler) Extract(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	mm := getResponseType(r)
-
 	extractorId := params.ByName("id")
 	if extractorId == "" {
 		http.Error(w, "Needs to provide an extractor id", http.StatusBadRequest)
@@ -357,17 +341,8 @@ func (eh *ExtractorHandler) Extract(w http.ResponseWriter, r *http.Request, para
 		return
 	}
 
-	var um Unmarshaller
+	um := json.NewDecoder(r.Body)
 	defer r.Body.Close()
-	switch mm {
-	case mime_yaml:
-		um = yaml.NewDecoder(r.Body)
-	case mime_json:
-		um = json.NewDecoder(r.Body)
-	default:
-		http.Error(w, "Only yaml or json allowed", http.StatusUnsupportedMediaType)
-		return
-	}
 
 	var e scheduler.ExtractionRequest
 	err = um.Decode(&e)
@@ -376,7 +351,7 @@ func (eh *ExtractorHandler) Extract(w http.ResponseWriter, r *http.Request, para
 		return
 	}
 
-	reportId, err := eh.scheduler.Schedule(ex, e)
+	reportId, err := eh.scheduler.Schedule(ex.GetId(), e)
 	if err != nil {
 		http.Error(w, "Error while scheduling extractor for request", http.StatusInternalServerError)
 		log.Println("Error while scheduling", err, e)
@@ -392,9 +367,25 @@ type HtmlExtractorScheduler struct {
 	machinery *machinery.Server
 }
 
-func (hes *HtmlExtractorScheduler) Schedule(extractor extractor.Extractor, payload scheduler.ExtractionRequest) (string, error) {
+func (hes *HtmlExtractorScheduler) ScheduleSync(extractorId uint64, payload scheduler.ExtractionRequest) (string, error) {
+	ej := machinery2.NewExtractionJob(payload.Url, extractorId, payload.ReportId)
+	a, err := hes.machinery.SendTask(ej)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	a.GetWithTimeout(time.Second*1, time.Minute*1)
+	if err != nil {
+		return "", err
+	}
+
+	return "", nil
+}
+
+func (hes *HtmlExtractorScheduler) Schedule(extractorId uint64, payload scheduler.ExtractionRequest) (string, error) {
 	k := ksuid.New()
-	ej := machinery2.NewExtractionJob(payload.Url, extractor.GetUid().String(), k.String())
+	ej := machinery2.NewExtractionJob(payload.Url, extractorId, payload.ReportId)
 	_, err := hes.machinery.SendTask(ej)
 	if err != nil {
 		log.Fatal(err)
@@ -403,9 +394,20 @@ func (hes *HtmlExtractorScheduler) Schedule(extractor extractor.Extractor, paylo
 	return k.String(), nil
 }
 
+func (eh *ExtractorHandler) GetReports(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+	allReports, err := eh.reportService.GetAll()
+	if err != nil {
+		http.Error(w, "Error while handling request", http.StatusInternalServerError)
+		log.Println(err)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(allReports)
+}
+
 func (eh *ExtractorHandler) GetReport(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
 	id := params.ByName("id")
-
 	_, err := ksuid.Parse(id)
 	if err != nil {
 		http.Error(w, "Error while parsing id", http.StatusBadRequest)
@@ -415,12 +417,11 @@ func (eh *ExtractorHandler) GetReport(w http.ResponseWriter, r *http.Request, pa
 	report, err := eh.reportService.Get(id)
 	k, err := ksuid.FromBytes(report.UID)
 	res := struct {
-		Id string `json:"id"`
+		Id    string `json:"id"`
 		Field dataaccess.Field
 	}{
 		k.String(),
 		report.Field,
-
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -429,6 +430,153 @@ func (eh *ExtractorHandler) GetReport(w http.ResponseWriter, r *http.Request, pa
 		http.Error(w, "Error while handling request", http.StatusInternalServerError)
 		return
 	}
+}
+
+func (eh *ExtractorHandler) GetJob(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+	id := params.ByName("id")
+
+	k, err := ksuid.Parse(id)
+	if err != nil {
+		http.Error(w, "Error while parsing id", http.StatusBadRequest)
+		log.Println(err)
+		return
+	}
+
+	j, err := eh.jobsService.Get(k.String())
+	if err != nil {
+		if gorm.IsRecordNotFoundError(err) {
+			http.NotFound(w, r)
+			return
+		}
+
+		http.Error(w, "Error while parsing id", http.StatusBadRequest)
+		log.Println(err)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(j)
+}
+
+func (eh *ExtractorHandler) GetAllJobs(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+	jobs, err := eh.jobsService.GetAll()
+
+	w.Header().Set("Content-Type", "application/json")
+	err = json.NewEncoder(w).Encode(jobs)
+
+	if err != nil {
+		http.Error(w, "Error while handling request", http.StatusInternalServerError)
+		//Todo: log this
+		return
+	}
+}
+
+type NewJob struct {
+	ExtractorId string `json:"extractorId"`
+	Urls        []string
+	Cron        string
+}
+
+func (eh *ExtractorHandler) StartJob(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+	jobId := params.ByName("id")
+
+	job, err := eh.jobsService.Get(jobId)
+
+	if err != nil {
+		http.Error(w, "Error while getting the job", 404)
+		log.Println(err)
+		return
+	}
+
+	urls := job.Urls
+
+	for k := range urls {
+		r, err := eh.reportService.CreateForJob(job, nil)
+		if err != nil {
+			log.Println(err)
+			continue
+		}
+
+		eh.scheduler.ScheduleSync(job.HtmlExtractor.ID,
+			scheduler.ExtractionRequest{
+				Url:      urls[k].Url,
+				ReportId: r.ID,
+			})
+
+		if err != nil {
+			log.Println(err)
+			continue
+		}
+	}
+}
+
+func (eh *ExtractorHandler) CreateJob(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+	defer r.Body.Close()
+	var nj NewJob
+	err := json.NewDecoder(r.Body).Decode(&nj)
+	if err != nil {
+		http.Error(w, "Malformed input", http.StatusBadRequest)
+		log.Println(err)
+		return
+	}
+
+	e, err := eh.service.Get(nj.ExtractorId)
+	if err != nil {
+		http.Error(w, "Extractor not found", http.StatusNotFound)
+		log.Println(err)
+		return
+	}
+
+	var urls []*dataaccess.Url
+
+	for e := range nj.Urls {
+		urls = append(urls, &dataaccess.Url{
+			Url: nj.Urls[e],
+		})
+	}
+
+	j := &dataaccess.Job{
+		Urls:            urls,
+		HtmlExtractorId: (e.(extractor.HtmlExtractor)).Id,
+		Cron:            nj.Cron,
+	}
+
+	jobId, err := eh.jobsService.Save(j)
+
+	triggerAddress := viper.GetString("serve.self_url") + "start/job/" + jobId
+	t := task_manager.Task{
+		// Todo: Fix this
+		TriggerAddress:       triggerAddress,
+		TriggerParams:        nil,
+		TriggerMethod:        "",
+		ErrorCallbackAddress: "",
+		ErrorCallbackMethod:  "",
+		Timeout:              60,
+		Retry: task_manager.Retry{
+			RetryType:    task_manager.Fibonacci,
+			DelayBetween: 10,
+			MaxRetries:   2,
+		},
+		Cron:     nj.Cron,
+		Disabled: true,
+	}
+
+	scheduledId, err := eh.schedulerClient.CreateTask(&t)
+	if err != nil {
+		http.Error(w, "Error while scheduling", http.StatusInternalServerError)
+		log.Println(err)
+		return
+	}
+
+	j.ScheduledTaskId = scheduledId
+	_, err = eh.jobsService.Save(j)
+	if err != nil {
+		http.Error(w, "Error while rescheduling", http.StatusInternalServerError)
+		log.Println(err)
+		return
+	}
+
+	w.Header().Set("Location", "/job/"+jobId)
+	w.WriteHeader(http.StatusCreated)
 }
 
 func (eh *ExtractorHandler) GetReportHeaders(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
@@ -457,7 +605,7 @@ func (eh *ExtractorHandler) GetReportHeaders(w http.ResponseWriter, r *http.Requ
 	}
 
 	if apiReports == nil {
-		 apiReports = []ApiReport{}
+		apiReports = []ApiReport{}
 	}
 
 	// Todo: make this work with yaml also

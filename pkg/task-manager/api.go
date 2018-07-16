@@ -34,6 +34,7 @@ func CreateApi(g *gorm.DB) http.Handler {
 	r := httprouter.New()
 	r.GET("/task", h.TasksAll)
 	r.PUT("/task", h.TaskCreate)
+	r.POST("/task/:id", h.TaskUpdate)
 	r.GET("/task/:id/detail", h.TaskDetail)
 	r.GET("/task/:id", h.TaskSingle)
 	return r
@@ -165,6 +166,7 @@ func (h *ManagerHandler) TaskDetail(w http.ResponseWriter, r *http.Request, para
 		http.Error(w, "Error while finding execution", http.StatusInternalServerError)
 		return
 	}
+
 	lastSuccess, err = findJoinedExecution(h.g, u, Finished)
 	if err != nil {
 		fmt.Println(err)
@@ -197,7 +199,6 @@ func (h *ManagerHandler) TaskDetail(w http.ResponseWriter, r *http.Request, para
 
 	w.Header().Set("Content-Type", "application/json")
 	err = json.NewEncoder(w).Encode(td)
-
 	if err != nil {
 		fmt.Println(err)
 		http.Error(w, "Error while getting execution", http.StatusInternalServerError)
@@ -206,5 +207,8 @@ func (h *ManagerHandler) TaskDetail(w http.ResponseWriter, r *http.Request, para
 
 	// Task itself
 	// Retries
+}
 
+func (h *ManagerHandler) TaskUpdate(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+	http.Error(w,"Not implemented", 501)
 }

@@ -12,7 +12,6 @@ import (
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"io/ioutil"
 )
 
 var cfgFile string
@@ -57,20 +56,8 @@ func initConfig() {
 		}
 
 		viper.AddConfigPath(home)
-		fmt.Println("Looking for a config at " + home)
-
-		files, err := ioutil.ReadDir(home)
-		if err != nil {
-			panic(err)
-		}
-
-		for _, f := range files {
-			fmt.Println(f.Name())
-		}
-
-		viper.SetConfigFile("/env/config.toml")
+		viper.SetConfigFile("config/config.toml")
 	}
-
 
 	viper.AutomaticEnv() // read in environment variables that match
 

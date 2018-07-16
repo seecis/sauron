@@ -369,6 +369,7 @@ func (order ExecutionOrder) GetTask(g *gorm.DB) (*Task, error) {
 
 	return &t, nil
 }
+
 func (order ExecutionOrder) retryCount(g *gorm.DB) (int, error) {
 	c := 0
 	if err := g.Count(&c).Model(&Execution{}).Where("execution_order_id = ?", order.Id).Error; err != nil {

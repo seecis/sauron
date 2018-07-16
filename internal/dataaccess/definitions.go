@@ -49,13 +49,23 @@ type ExtractorService interface {
 	GetAll() ([]extractor.Extractor, error)
 	Save(e extractor.Extractor) (string, error)
 	Get(id string) (extractor.Extractor, error)
+	GetInternal(id uint) (extractor.Extractor, error)
 	Delete(id string) error
 }
 
 type ReportService interface {
-	WriteAsReport(reportId string, field *extractor.Field) error
+	WriteAsReport(reportId uint64, field *extractor.Field) error
 	GetHeaders() ([]Report, error)
 	Get(id string) (*Report, error)
+	GetAll() ([]*Report, error)
+	CreateForJob(j *Job, v *Version) (*Report, error)
+}
+
+type JobService interface {
+	GetAll() ([]*Job, error)
+	Save(j *Job) (string, error)
+	Get(id string) (*Job, error)
+	Delete(id string)
 }
 
 func (e *DataServiceError) Error() string {

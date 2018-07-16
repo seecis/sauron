@@ -6,21 +6,49 @@
 package task_manager
 
 import (
-	"github.com/julienschmidt/httprouter"
-	"github.com/rs/cors"
 	"net/http"
 	"fmt"
+	"github.com/jinzhu/gorm"
+	"time"
+	"os"
+	"os/signal"
 )
 
-func Serve(ip, port string) {
-	router := httprouter.New()
+func Serve(ip, port string, db *gorm.DB) {
+	c := Clock{}
+	db.AutoMigrate(&Task{}, &ExecutionOrder{}, &Execution{}, &Retry{})
 
-	mux := http.NewServeMux()
-	mux.Handle("/", router)
+	defer db.Close()
 
-	handler := cors.Default().Handler(mux)
-	// Todo: graceful shutdown
-	err := http.ListenAndServe(fmt.Sprintf("%s:%s", ip, port), handler)
-	// Todo: logging
-	fmt.Println(err)
+	client := http.Client{}
+	client.Timeout = 10 * time.Second
+	ex := Executor{g: db, c: &client}
+	lp := Looper{db, &ex}
+	sh := Scheduler{g: db}
+
+	looperCB := func(_ time.Time) { lp.onTick() }
+	scheudlerCB := func(_ time.Time) { sh.Schedule() }
+	c.AddListener(&looperCB, time.Second*2)
+	c.AddListener(&scheudlerCB, time.Second*10)
+
+	c.Start()
+
+	ch := make(chan os.Signal, 1)
+	signal.Notify(ch, os.Interrupt)
+	signal.Notify(ch, os.Kill)
+
+	addr := fmt.Sprintf("%s:%s", ip, port)
+	fmt.Println("Manager is listening on", port)
+	h := &http.Server{Addr: addr, Handler: CreateApi(db)}
+
+
+	go func() {
+		err := h.ListenAndServe()
+		fmt.Println(err)
+	}()
+
+	<-ch
+	h.Close()
+	fmt.Println("Received signal, closing")
+	c.Stop()
 }

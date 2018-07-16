@@ -5,21 +5,12 @@
 
 package scheduler
 
-import (
-	"github.com/seecis/sauron/pkg/extractor"
-)
-
 type ExtractionScheduler interface {
-	Schedule(extractor extractor.Extractor, payload ExtractionRequest) (string, error)
+	Schedule(extractorId uint64, payload ExtractionRequest) (string, error)
+	ScheduleSync(extractorId uint64, payload ExtractionRequest) (string, error)
 }
 
 type ExtractionRequest struct {
-	Url string `json:"url" yaml:"url"`
+	Url      string `json:"url" yaml:"url"`
+	ReportId uint64 `json:"-"`
 }
-
-
-
-
-
-
-

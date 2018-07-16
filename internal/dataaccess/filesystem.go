@@ -11,35 +11,12 @@ import (
 	"strings"
 	"os"
 	"gopkg.in/yaml.v2"
-	"github.com/pkg/errors"
 )
 
-// Todo: Maybe put a config for this?
 type FileSystemExtractorService struct {
 	basePath string
 }
 
-func NewFileSystemExtractorService(basePath string) ExtractorService {
-	return &FileSystemExtractorService{
-		basePath: basePath,
-	}
-}
-
-func NewFileSystemReportService(basePath string) ReportService {
-	service := FileSystemReportService{
-		path: basePath,
-	}
-
-	return &service
-}
-
-func (fses *FileSystemReportService) GetHeaders() ([]Report, error) {
-	return nil, errors.New("Not implemented")
-}
-
-func (fses *FileSystemReportService) Get(id string) (*Report, error) {
-	return nil, errors.New("Not implemented")
-}
 // returns: if there is an error the type of it is always *DataServiceError
 func (fses *FileSystemExtractorService) GetAll() ([]extractor.Extractor, error) {
 	files, err := ioutil.ReadDir(fses.basePath)
@@ -151,20 +128,4 @@ func buildUnknownError(err error) *DataServiceError {
 	}
 }
 
-type FileSystemReportService struct {
-	path string
-}
 
-func (fsrs *FileSystemReportService) WriteAsReport(reportId string, field *extractor.Field) error {
-	file, err := os.Create(fsrs.path + reportId + ".yml")
-	if err != nil {
-		return buildUnknownError(err)
-	}
-
-	err = yaml.NewEncoder(file).Encode(field)
-	if err != nil {
-		return buildUnknownError(err)
-	}
-
-	return nil
-}

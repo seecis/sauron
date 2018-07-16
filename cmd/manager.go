@@ -8,6 +8,10 @@ package cmd
 import (
 	"github.com/spf13/cobra"
 	"github.com/seecis/sauron/pkg/task-manager"
+	"github.com/spf13/viper"
+	"github.com/jinzhu/gorm"
+	"fmt"
+	"log"
 )
 
 var managerCmd = &cobra.Command{
@@ -15,7 +19,7 @@ var managerCmd = &cobra.Command{
 	Short: "Sauron's secretary",
 	Long:  "Task scheduler. Better version of cron.",
 	Run: func(cmd *cobra.Command, args []string) {
-		task_manager.Main()
+		cmd.Help()
 	},
 }
 
@@ -23,7 +27,22 @@ var serveManagerCmd = &cobra.Command{
 	Use:   "serve",
 	Short: "Serves json api for scheduling things",
 	Run: func(cmd *cobra.Command, args []string) {
-		task_manager.Serve(managerIp, managerPort)
+
+		dbConf := viper.GetStringMap("manager.database")
+		u := dbConf["username"]
+		p := dbConf["password"]
+		h := dbConf["host"]
+		po := dbConf["port"]
+		dbname := dbConf["database"]
+
+		g, err := gorm.Open("mssql", fmt.Sprintf("sqlserver://%s:%s@%s:%d?database=%s", u, p, h, po, dbname))
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		ip := viper.GetString("manager.ip")
+		port := viper.GetString("manager.port")
+		task_manager.Serve(ip, port, g)
 	},
 }
 

@@ -16,7 +16,7 @@ import (
 )
 
 type Query struct {
-	Id 				string `json:"id" yaml:"id"`
+	Id              string  `json:"id" yaml:"id"`
 	Selector        string  `json:"selector" yaml:"selector"`
 	Name            string  `json:"name" yaml:"name"`
 	ForEachChildren bool    `json:"forEachChildren" yaml:"forEachChildren"`
@@ -27,8 +27,14 @@ type Query struct {
 type HtmlExtractor struct {
 	Name    string      `json:"name,omitempty" yaml:"name,omitempty"`
 	Queries []Query     `json:"queries" yaml:"queries"`
-	Url 	string		`json:"url" yaml:"url"`
+	Url     string      `json:"url" yaml:"url"`
 	Uid     ksuid.KSUID `json:"id" yaml:"id"`
+	Id      uint64      `json:"-"`
+}
+
+
+func(he HtmlExtractor) GetId() uint64 {
+	return he.Id
 }
 
 func (he HtmlExtractor) GetUid() ksuid.KSUID {

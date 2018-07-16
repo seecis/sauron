@@ -20,4 +20,5 @@ type Extractor interface {
 	Extract(reader io.Reader) (*Field, error)
 	GetName() string
 	GetUid() ksuid.KSUID
+	GetId() uint64
 }

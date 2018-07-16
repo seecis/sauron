@@ -39,7 +39,7 @@ func NewWorker() {
 	w.Launch()
 }
 
-func NewExtractionJob(url string, extractorId, reportId string) *tasks.Signature {
+func NewExtractionJob(url string, extractorId uint64, reportId uint64) *tasks.Signature {
 	sig := tasks.Signature{
 		Name: "extract",
 		Args: []tasks.Arg{
@@ -47,10 +47,10 @@ func NewExtractionJob(url string, extractorId, reportId string) *tasks.Signature
 				Type:  "string",
 				Value: url,
 			}, {
-				Type:  "string",
+				Type:  "uint",
 				Value: extractorId,
 			}, {
-				Type:  "string",
+				Type:  "uint64",
 				Value: reportId,
 			},
 		},
