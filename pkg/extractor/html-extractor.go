@@ -61,7 +61,7 @@ func (he HtmlExtractor) Extract(reader io.Reader) (*Field, error) {
 		Name:            he.Name,
 		ForEachChildren: false,
 		SubQueries:      he.Queries,
-		Trim:            false,
+		Trim:            true,
 	}
 
 	f, err := executeQuery(doc, rootQuery)

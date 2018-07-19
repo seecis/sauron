@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"reflect"
 	"github.com/davecgh/go-spew/spew"
+	"log"
 )
 
 var testExtractor = extractor.HtmlExtractor{
@@ -30,7 +31,7 @@ func TestMSSQLExtractorService_Save(t *testing.T) {
 
 	k, err := ksuid.Parse(id)
 	testExtractor.Uid = k
-	fmt.Println("Saved an html extractor with id", id)
+	log.Println("Saved an html extractor with id", id)
 }
 
 func TestMSSQLExtractorService_Get(t *testing.T) {

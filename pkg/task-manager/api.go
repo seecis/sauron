@@ -13,6 +13,7 @@ import (
 	"encoding/json"
 	"strconv"
 	"time"
+	"log"
 )
 
 // tasks
@@ -49,14 +50,14 @@ func (h *ManagerHandler) TaskCreate(w http.ResponseWriter, r *http.Request, para
 	t := Task{}
 	err := json.NewDecoder(r.Body).Decode(&t)
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 		http.Error(w, "Error while parsing json", http.StatusBadRequest)
 		return
 	}
 
 	err = h.g.Save(&t).Error
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 		http.Error(w, "Error while creating task", http.StatusInternalServerError)
 		return
 	}
@@ -69,7 +70,7 @@ func (h *ManagerHandler) TasksAll(w http.ResponseWriter, r *http.Request, params
 	var tasks []Task
 	err := h.g.Preload("Retry").Find(&tasks).Error
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 		http.Error(w, "Error while finding tasks", 500)
 		return
 	}
@@ -84,7 +85,7 @@ func (h *ManagerHandler) TaskSingle(w http.ResponseWriter, r *http.Request, para
 	t := Task{}
 	u, err := strconv.ParseUint(id, 10, 64)
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 		http.Error(w, "Bad id", http.StatusBadRequest)
 		return
 	}
@@ -97,7 +98,7 @@ func (h *ManagerHandler) TaskSingle(w http.ResponseWriter, r *http.Request, para
 			return
 		}
 
-		fmt.Println(err)
+		log.Println(err)
 		http.Error(w, "Error while fetching task", http.StatusInternalServerError)
 		return
 	}
@@ -155,28 +156,28 @@ func (h *ManagerHandler) TaskDetail(w http.ResponseWriter, r *http.Request, para
 	id := params.ByName("id")
 	u, err := strconv.ParseUint(id, 10, 64)
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 		http.Error(w, "Bad id", http.StatusBadRequest)
 		return
 	}
 
 	last, err = findJoinedExecution(h.g, u, )
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 		http.Error(w, "Error while finding execution", http.StatusInternalServerError)
 		return
 	}
 
 	lastSuccess, err = findJoinedExecution(h.g, u, Finished)
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 		http.Error(w, "Error while finding execution", http.StatusInternalServerError)
 		return
 	}
 
 	lastFail, err = findJoinedExecution(h.g, u, Failed)
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 		http.Error(w, "Error while finding execution", http.StatusInternalServerError)
 		return
 	}
@@ -184,7 +185,7 @@ func (h *ManagerHandler) TaskDetail(w http.ResponseWriter, r *http.Request, para
 	t := Task{}
 	err = h.g.First(&t, u).Error
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 		http.Error(w, "Error while finding execution details", http.StatusInternalServerError)
 		return
 	}
@@ -200,7 +201,7 @@ func (h *ManagerHandler) TaskDetail(w http.ResponseWriter, r *http.Request, para
 	w.Header().Set("Content-Type", "application/json")
 	err = json.NewEncoder(w).Encode(td)
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 		http.Error(w, "Error while getting execution", http.StatusInternalServerError)
 		return
 	}

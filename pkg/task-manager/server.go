@@ -12,6 +12,7 @@ import (
 	"time"
 	"os"
 	"os/signal"
+	"log"
 )
 
 func Serve(ip, port string, db *gorm.DB) {
@@ -38,17 +39,17 @@ func Serve(ip, port string, db *gorm.DB) {
 	signal.Notify(ch, os.Kill)
 
 	addr := fmt.Sprintf("%s:%s", ip, port)
-	fmt.Println("Manager is listening on", port)
+	log.Println("Manager is listening on", port)
 	h := &http.Server{Addr: addr, Handler: CreateApi(db)}
 
 
 	go func() {
 		err := h.ListenAndServe()
-		fmt.Println(err)
+		log.Println(err)
 	}()
 
 	<-ch
 	h.Close()
-	fmt.Println("Received signal, closing")
+	log.Println("Received signal, closing")
 	c.Stop()
 }

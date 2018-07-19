@@ -10,7 +10,7 @@ services:
   mssql:
     image: microsoft/mssql-server-linux
     ports:
-      - 0.0.0.0:1433:1433
+      - 1433:1433
     environment:
       - ACCEPT_EULA=Y
       - SA_PASSWORD=AAABBBccc123
@@ -19,23 +19,41 @@ services:
     networks:
       backend:
   api:
+    depends_on:
+      - mssql
+      - chrome-magic
+#    restart: always
     networks:
       backend:
-    image: saur-api
+      frontend:
+    image: seecis/sauron
+    labels:
+      - traefik.backend=sauron-api
+      - traefik.frontend.rule=Host:api.sauron.localhost
+      - traefik.docker.network=frontend
+      - traefik.port=9091
     environment:
       - HOME=/saur
-    entrypoint: /webserver/sauron serve api --config /saur/config.toml
+    entrypoint: sauron serve api --config /saur/config.toml
     volumes:
       - ./config:/saur
+    expose:
+      - 9091
     ports:
       - 9091:9091
   proxy:
-    image: saur-api
+    image: seecis/sauron
+    labels:
+      - traefik.backend=sauron-proxy
+      - traefik.frontend.rule=Host:proxy.sauron.localhost
+      - traefik.docker.network=frontend
+      - traefik.port=8092
     environment:
       - HOME=/saur
-    entrypoint: /webserver/sauron proxy --config /saur/config.toml
+    entrypoint: sauron proxy --config /saur/config.toml
     networks:
       proxy_network:
+      frontend:
     volumes:
       - ./config:/saur
     ports:
@@ -49,14 +67,40 @@ services:
     networks:
       backend:
   worker:
-    image: saur-api
-    entrypoint: /webserver/sauron worker --config /saur/config.toml
+    depends_on:
+      - mssql
+    image: seecis/sauron
+    entrypoint: sauron worker --config /saur/config.toml
     volumes:
       - ./config:/saur
     networks:
       backend:
       proxy_network:
-
+  web:
+    depends_on:
+      - api
+      - proxy
+    image: seecis/sauron-web
+    networks:
+      frontend:
+    entrypoint: serve dist -l tcp://0.0.0.0:5000
+    ports:
+      - 5000:5000
+    labels:
+      - traefik.backend=sauron-web
+      - traefik.frontend.rule=Host:sauron.localhost
+      - traefik.docker.network=frontend
+      - traefik.port=5000
+    expose:
+      - 5000
+  task-manager:
+    image: seecis/sauron
 networks:
   proxy_network:
+    external: false
   backend:
+    external: false
+  frontend:
+    external: true
+
+

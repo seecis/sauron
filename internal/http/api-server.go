@@ -111,7 +111,7 @@ func ServeApi(ip, port string) {
 		ExposedHeaders:   []string{"Location"}})
 
 	handler := c.Handler(mux)
-	fmt.Println("Sauron api is listening add ", address)
+	log.Println("Sauron api is listening add ", address)
 	log.Fatal(http.ListenAndServe(address, handlers.LoggingHandler(multiout, handler)))
 }
 
@@ -228,7 +228,7 @@ func (eh *ExtractorHandler) NewExtractor(w http.ResponseWriter, r *http.Request,
 	var ex extractor.HtmlExtractor
 	rr, err := httputil.DumpRequest(r, true)
 
-	fmt.Println(string(rr), err)
+	log.Println(string(rr), err)
 	err = deserialize(r.Body, &ex)
 	defer r.Body.Close()
 	if err != nil {
@@ -454,6 +454,9 @@ func (eh *ExtractorHandler) GetJob(w http.ResponseWriter, r *http.Request, param
 	}
 
 	w.Header().Set("Content-Type", "application/json")
+
+	kk, err := ksuid.FromBytes(j.UID)
+	j.Ksuid = kk.String()
 	json.NewEncoder(w).Encode(j)
 }
 
@@ -461,6 +464,19 @@ func (eh *ExtractorHandler) GetAllJobs(w http.ResponseWriter, r *http.Request, p
 	jobs, err := eh.jobsService.GetAll()
 
 	w.Header().Set("Content-Type", "application/json")
+
+	for e := range jobs {
+		j := jobs[e]
+		kk, err := ksuid.FromBytes(j.UID)
+		if err != nil {
+			http.Error(w, "Error while handling request", http.StatusInternalServerError)
+			log.Println(err)
+			return
+		}
+
+		j.Ksuid = kk.String()
+	}
+
 	err = json.NewEncoder(w).Encode(jobs)
 
 	if err != nil {
@@ -544,7 +560,6 @@ func (eh *ExtractorHandler) CreateJob(w http.ResponseWriter, r *http.Request, pa
 
 	triggerAddress := viper.GetString("serve.self_url") + "start/job/" + jobId
 	t := task_manager.Task{
-		// Todo: Fix this
 		TriggerAddress:       triggerAddress,
 		TriggerParams:        nil,
 		TriggerMethod:        "",
@@ -582,7 +597,7 @@ func (eh *ExtractorHandler) CreateJob(w http.ResponseWriter, r *http.Request, pa
 func (eh *ExtractorHandler) GetReportHeaders(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
 	reports, err := eh.reportService.GetHeaders()
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 		http.Error(w, "Error while getting reports", http.StatusInternalServerError)
 		return
 	}

@@ -119,8 +119,9 @@ type Version struct {
 }
 
 type Job struct {
-	ID              uint64        `gorm:"primary_key"`
-	UID             []byte
+	Ksuid           string        `json:"id"`
+	ID              uint64        `gorm:"primary_key" json:"-"`
+	UID             []byte        `json:"-"`
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
 	DeletedAt       *time.Time    `sql:"index"`
@@ -312,9 +313,7 @@ func (f *FieldArray) fromDomainModel(dm []extractor.Field) FieldArray {
 func (f *Field) fromDomainModel(field *extractor.Field) *Field {
 	fa := (&FieldArray{}).fromDomainModel(field.Subfields)
 	ff := []Field(fa)
-	if ff == nil {
-		fmt.Println("Subfields are null")
-	}
+
 	return &Field{
 		SubFields: ff,
 		Label:     field.Label,
@@ -483,7 +482,6 @@ func (r *MSSQLReportService) WriteAsReport(reportId uint64, field *extractor.Fie
 		return err
 	}
 
-
 	report := &Report{
 
 	}
@@ -509,7 +507,6 @@ func (r *MSSQLReportService) WriteAsReport(reportId uint64, field *extractor.Fie
 	if err != nil {
 		return err
 	}
-
 
 	return nil
 }

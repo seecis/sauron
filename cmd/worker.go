@@ -65,7 +65,6 @@ func (ew *ExtractionWorker) Extract(url string, extractorId uint, reportId uint6
 	fields, err := extractor.Extract(res.Body)
 
 	if err != nil {
-		fmt.Println(err)
 		log.Fatal(err)
 	}
 

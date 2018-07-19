@@ -16,6 +16,7 @@ import (
 	"github.com/pkg/errors"
 	"net/http"
 	"math"
+	"log"
 )
 
 type RetryType int
@@ -205,12 +206,12 @@ func (order ExecutionOrder) Ready(retry Retry) (bool) {
 	case Plain:
 		nextRetryTime = le.Date.Add(time.Duration(float64(rc) * retry.DelayBetween.Seconds()))
 	case None:
-		fmt.Println("We shouldn't be here")
+		log.Println("We shouldn't be here")
 		panic("Trying to retry an order which mustn't be retried")
 		return false
 	}
 
-	fmt.Println("Task will be run on", nextRetryTime)
+	log.Println("Task will be run on", nextRetryTime)
 	return nextRetryTime.Before(time.Now())
 }
 
@@ -259,7 +260,7 @@ func findLastSuccessfulExecutionTime(task Task, g *gorm.DB) (time.Time, error) {
 
 func (s *Scheduler) Schedule() error {
 	t := time.Now()
-	fmt.Println("Scheduler tick")
+	log.Println("Scheduler tick")
 
 	rowCount := s.g.Model(&ExecutionOrder{}).Where("expire < ? AND status != ?", t, Expired).Update("status", Expired).RowsAffected
 	e := s.g.Error
@@ -276,7 +277,7 @@ func (s *Scheduler) Schedule() error {
 	// Create an execution order for each of them.
 	for _, v := range *newTasks {
 		if err != nil {
-			fmt.Println(err)
+			log.Println(err)
 		}
 
 		e := ExecutionOrder{
@@ -391,7 +392,7 @@ func (l *Looper) onTick() error {
 	}
 
 	if len(orders) == 0 {
-		fmt.Println("Nothing to do")
+		log.Println("Nothing to do")
 		return nil
 	}
 
@@ -411,7 +412,7 @@ func (l *Looper) onTick() error {
 		if rc > t.Retry.MaxRetries {
 			err := v.SetUnschedulable(l.g)
 			if err != nil {
-				fmt.Println(err)
+				log.Println(err)
 			}
 		}
 
@@ -427,7 +428,7 @@ func (l *Looper) onTick() error {
 		delete(pendingOrderIds, e.orderId)
 		o := filterOrderById(&orders, e.orderId)
 		if o == nil {
-			fmt.Println("Coudn't find order??")
+			log.Println("Coudn't find order??")
 			continue
 		}
 
@@ -452,7 +453,7 @@ func (l *Looper) onTick() error {
 
 		err := l.g.Save(o).Error
 		if err != nil {
-			fmt.Println(err)
+			log.Println(err)
 			// todo: handle this too
 		}
 	}
@@ -504,7 +505,7 @@ func (executor *Executor) ExecuteAsync(order ExecutionOrder, c chan ExecutionRes
 }
 
 func (executor *Executor) executionFailed(ex *Execution, msg string) {
-	fmt.Println("Execution with id ", ex.Id, "failed: ", msg)
+	log.Println("Execution with id ", ex.Id, "failed: ", msg)
 	ex.Status = Failed
 	ex.Message = msg
 	executor.g.Save(ex)

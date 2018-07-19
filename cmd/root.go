@@ -12,6 +12,7 @@ import (
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"log"
 )
 
 var cfgFile string
@@ -37,6 +38,7 @@ func Execute() {
 }
 
 func init() {
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	cobra.OnInitialize(initConfig)
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.sauron/config.toml)")
 	viper.SetConfigType("toml")
@@ -63,6 +65,9 @@ func initConfig() {
 
 	// If a config file is found, read it in.
 	err := viper.ReadInConfig()
-	fmt.Println("Error while reading config", err)
-	fmt.Println("Using config file:", viper.ConfigFileUsed())
+	if err != nil {
+		log.Println("Error while reading config", err)
+	}
+
+	log.Println("Using config file:", viper.ConfigFileUsed())
 }

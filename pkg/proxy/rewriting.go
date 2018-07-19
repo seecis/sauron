@@ -65,15 +65,15 @@ func StartProxy(ip, port string) {
 
 	chromePort := proxyConf["chromium_port"].(int64)
 
-	fmt.Println("Container resolved for")
+	log.Println("Container resolved for")
 	for _, v := range ips {
-		fmt.Println(v)
+		log.Println(v)
 	}
 
 	chromeAddr := proxyConf["chromium_addr"]
 	chromePortInt := int(chromePort)
 
-	fmt.Println("Trying to connect to chrome at: ", chromeAddr, chromePortInt)
+	log.Println("Trying to connect to chrome at: ", chromeAddr, chromePortInt)
 	browser = chrome.New(
 		&chrome.Flags{
 			"addr": ips[0].String(),
@@ -310,7 +310,7 @@ func (p *Proxy) RequestPage(id string, url *url.URL, writer io.Writer) (error) {
 	outfile, err := ioutil.TempFile("", "dom_json")
 	defer outfile.Close()
 
-	fmt.Println("Writing response from chrome to ", outfile.Name())
+	log.Println("Writing response from chrome to ", outfile.Name())
 
 	json.NewEncoder(outfile).Encode(gdr)
 
