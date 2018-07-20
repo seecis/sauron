@@ -271,6 +271,7 @@ func (qa *QueryArr) ToDomainModel(g *gorm.DB) ([]extractor.Query, error) {
 func (*HtmlExtractor) FromDomainModel(e extractor.HtmlExtractor) (*HtmlExtractor, error) {
 	return &HtmlExtractor{
 		Name:    e.Name,
+		Url:     e.Url,
 		Queries: (&QueryArr{}).FromDomainModel(e.Queries),
 	}, nil
 }
@@ -298,6 +299,7 @@ func (e *HtmlExtractor) ToDomainModel(g *gorm.DB) (extractor.Extractor, error) {
 		Queries: queries,
 		Uid:     k,
 		Url:     e.Url,
+		Id:      e.ID,
 	}, err
 }
 
@@ -355,7 +357,6 @@ func (m *MSSQLExtractorService) GetAll() ([]extractor.Extractor, error) {
 func (m *MSSQLExtractorService) Save(e extractor.Extractor) (string, error) {
 	switch e.(type) {
 	case *extractor.HtmlExtractor:
-
 		eh := e.(*extractor.HtmlExtractor)
 		return m.saveHtmlExtractor(*eh)
 	}

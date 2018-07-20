@@ -50,7 +50,6 @@ import (
 	"github.com/RichardKnop/machinery/v1"
 	machinery2 "github.com/seecis/sauron/internal/machinery"
 	"github.com/segmentio/ksuid"
-	"net/http/httputil"
 	"time"
 	"github.com/spf13/viper"
 	"github.com/davecgh/go-spew/spew"
@@ -94,7 +93,6 @@ func ServeApi(ip, port string) {
 	router.POST("/start/job/:id", eh.StartJob)
 
 	address := fmt.Sprintf("%s:%s", ip, port)
-	log.Printf("Sauron is listening you at %s", address)
 
 	accessLogFile := createAccessLog()
 	defer accessLogFile.Close()
@@ -111,7 +109,7 @@ func ServeApi(ip, port string) {
 		ExposedHeaders:   []string{"Location"}})
 
 	handler := c.Handler(mux)
-	log.Println("Sauron api is listening add ", address)
+	log.Println("Sauron api is listening at ", address)
 	log.Fatal(http.ListenAndServe(address, handlers.LoggingHandler(multiout, handler)))
 }
 
@@ -226,10 +224,7 @@ func deserialize(r io.Reader, htmlExtractor *extractor.HtmlExtractor) error {
 func (eh *ExtractorHandler) NewExtractor(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
 	// Todo: we may need more magic here
 	var ex extractor.HtmlExtractor
-	rr, err := httputil.DumpRequest(r, true)
-
-	log.Println(string(rr), err)
-	err = deserialize(r.Body, &ex)
+	err := deserialize(r.Body, &ex)
 	defer r.Body.Close()
 	if err != nil {
 		// Todo: make this warning
@@ -572,7 +567,7 @@ func (eh *ExtractorHandler) CreateJob(w http.ResponseWriter, r *http.Request, pa
 			MaxRetries:   2,
 		},
 		Cron:     nj.Cron,
-		Disabled: true,
+		Disabled: false,
 	}
 
 	scheduledId, err := eh.schedulerClient.CreateTask(&t)
